@@ -1,0 +1,9 @@
+frontend/node_modules/
+frontend/dist/
+backend/node_modules/
+backend/dist/
+node_modules/
+*.docx
+backend/uploads
+docx_render/
+docx_assets/
