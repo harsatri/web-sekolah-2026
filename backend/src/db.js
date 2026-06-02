@@ -8,17 +8,22 @@ export function createPoolFromEnv() {
   const database = process.env.MYSQL_DATABASE || 'websekolah_2026'
 
   return mysql.createPool({
-    host,
-    port,
-    user,
-    password,
-    database,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    multipleStatements: true,
-    dateStrings: true,
-  })
+  host,
+  port,
+  user,
+  password,
+  database,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  multipleStatements: true,
+  dateStrings: true,
+  // hapus authPlugins dan ssl yang lama, ganti ini:
+  authPlugins: {
+    auth_gssapi_client: () => () => Buffer.alloc(0),
+  },
+  ssl: process.env.MYSQL_SSL === 'true' ? { rejectUnauthorized: false } : false,
+})
 }
 
 export async function queryOne(pool, sql, params = []) {

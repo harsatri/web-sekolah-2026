@@ -4,22 +4,14 @@ import { useSuperAdminData } from '../../hooks/useSuperAdminData.js'
 export default function SuperAdminActivityLogs() {
   const { activityLogs, formatDateTime } = useSuperAdminData()
   const [filterType, setFilterType] = useState('all')
-  const [searchTerm, setSearchTerm] = useState('')
 
   const filteredLogs = useMemo(() => {
     if (!Array.isArray(activityLogs)) return []
     return activityLogs.filter(log => {
       const matchesType = filterType === 'all' || log.type === filterType
-      const actorName = log.actorName || ''
-      const actorEmail = log.actorEmail || ''
-      const description = log.description || ''
-      const matchesSearch = 
-        actorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        actorEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        description.toLowerCase().includes(searchTerm.toLowerCase())
-      return matchesType && matchesSearch
+      return matchesType
     })
-  }, [activityLogs, filterType, searchTerm])
+  }, [activityLogs, filterType])
 
   const logTypes = useMemo(() => {
     if (!Array.isArray(activityLogs)) return []
@@ -55,20 +47,6 @@ export default function SuperAdminActivityLogs() {
 
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </span>
-            <input 
-              type="text" 
-              className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Cari aktor atau deskripsi..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
           <select 
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={filterType}

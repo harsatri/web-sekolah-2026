@@ -43,6 +43,51 @@ function normalizeGallery(value) {
   })
 }
 
+function extractSchoolLabel(user) {
+  const explicit = String(user?.schoolName || '').trim()
+  if (explicit) return explicit
+
+  const rawName = String(user?.name || '').trim()
+  if (!rawName) return ''
+
+  return rawName
+    .replace(/^admin\s+/i, '')
+    .replace(/^akun\s+/i, '')
+    .trim()
+}
+
+function createEmptySchoolFromUser(user) {
+  const schoolLabel = extractSchoolLabel(user) || 'Sekolah Baru'
+  return {
+    id: user?.schoolId != null ? Number(user.schoolId) : null,
+    name: schoolLabel,
+    principalName: '',
+    review: '',
+    monthlyTarget: '',
+    facilities: [],
+    programs: [],
+    gallery: [],
+    achievements: '',
+    address: '',
+    district: 'Purwokerto Timur',
+    contact: '',
+    gps: '',
+    accreditation: '',
+    accreditationScore: '',
+    capacity: '',
+    ratio: '',
+    graduationStats: '',
+    extracurriculars: [],
+    galleryLink: '',
+    graduationRate: '',
+    avgExam: '',
+    certifiedTeachers: '',
+    rating: '',
+    achievementDesc: '',
+    programDetail: '',
+  }
+}
+
 function createInitialFormData(school) {
   if (!school) return null
   return {
@@ -104,23 +149,18 @@ export function useSchoolAdminData() {
   const { user } = useAuth()
   const { schools, updateSchool } = useSchools()
   const schoolToManage = useMemo(() => {
-    if (!schools.length) return null
-    if (user?.role !== 'school_admin') return schools[0]
-    if (user?.schoolId) {
-      const byId = schools.find((school) => Number(school.id) === Number(user.schoolId))
-      if (byId) return byId
+    if (user?.role !== 'school_admin') return schools[0] || null
+
+    if (user?.schoolId == null) {
+      return createEmptySchoolFromUser(user)
     }
-    if (user?.schoolName) {
-      const byName = schools.find((school) => String(school.name).toLowerCase() === String(user.schoolName).toLowerCase())
-      if (byName) return byName
+
+    if (!schools.length) {
+      return createEmptySchoolFromUser(user)
     }
-    const byEmail = schools.find((school) => {
-      const normalizedEmail = String(user?.email || '').toLowerCase()
-      const normalizedName = String(school.name || '').toLowerCase()
-      return normalizedEmail.includes('kranji') && normalizedName.includes('kranji')
-        || normalizedEmail.includes('sokanegara') && normalizedName.includes('sokanegara')
-    })
-    return byEmail || schools[0]
+
+    const byId = schools.find((school) => Number(school.id) === Number(user.schoolId))
+    return byId || createEmptySchoolFromUser(user)
   }, [schools, user])
   const [formData, setFormData] = useState(createInitialFormData(schoolToManage))
   const [initialFormData, setInitialFormData] = useState(createInitialFormData(schoolToManage))
@@ -149,7 +189,7 @@ export function useSchoolAdminData() {
       }
       try {
         const [recs, requests] = await Promise.all([
-          apiJson(`/api/recommendations?schoolId=${schoolToManage.id}`),
+          apiJson('/api/recommendations'),
           apiJson('/api/criteria-requests'),
         ])
         if (cancelled) return
@@ -283,6 +323,9 @@ export function useSchoolAdminData() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData) return
+    if (!formData.id) {
+      throw new Error('Akun admin sekolah belum terhubung ke data sekolah yang valid.')
+    }
     try {
       const uploadedPhotos = await Promise.all(
         (formData.gallery || []).map(async (photo) => {

@@ -1,9 +1,9 @@
 INSERT INTO users (name, email, password, role, active, schoolId, schoolName)
 VALUES
-  ('Super Admin', 'super@dilayakin.app', 'super123', 'super_admin', 1, NULL, NULL),
-  ('Admin SD Negeri 1 Kranji', 'admin.kranji@dilayakin.app', 'kranji123', 'school_admin', 1, 1, 'SD NEGERI 1 KRANJI'),
-  ('Admin SD Negeri 1 Sokanegara', 'admin.sokanegara@dilayakin.app', 'sokanegara123', 'school_admin', 1, 2, 'SD NEGERI 1 SOKANEGARA'),
-  ('User', 'user@dilayakin.app', 'user123', 'user', 1, NULL, NULL)
+  ('Super Admin', 'super@dilayakin.app', '$2b$10$Ie0LubpWRWXpcp9fUhAs3ufEfsIqB3dVZRItxRaT3pYGLVN.6fccy', 'super_admin', 1, NULL, NULL),
+  ('Admin SD Negeri 1 Kranji', 'admin.kranji@dilayakin.app', '$2b$10$l5kjSWl78H23RzI45nFOfezERfm5W0uIt/Aagd9W8Dj5Q0YTz5Ef6', 'school_admin', 1, 1, 'SD NEGERI 1 KRANJI'),
+  ('Admin SD Negeri 1 Sokanegara', 'admin.sokanegara@dilayakin.app', '$2b$10$tY/2w7Zuk3fzKXM7T.jPsOj7Ml1d0mUEyAq9Q3Zc1ZKF77zHGSbke', 'school_admin', 1, 2, 'SD NEGERI 1 SOKANEGARA'),
+  ('User', 'user@dilayakin.app', '$2b$10$7Y6fH3VmeQ8iz4bFzAAUsO7P7buqzqT0a08QjViNtjWi.mu/60EPq', 'user', 1, NULL, NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
   password=VALUES(password),

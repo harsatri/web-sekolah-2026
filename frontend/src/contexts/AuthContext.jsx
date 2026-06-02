@@ -29,10 +29,32 @@ export function AuthProvider({ children }) {
     setUser(auth)
   }
 
-  const signupSchool = async ({ accountName, email, password, schoolName }) => {
+  const signupSchool = async ({
+    accountName,
+    email,
+    password,
+    schoolName,
+    district,
+    address,
+    contact,
+    capacity,
+    accreditationScore,
+    certifiedTeachers,
+  }) => {
     const auth = await apiJson('/api/auth/signup-school', {
       method: 'POST',
-      body: { accountName, email, password, schoolName },
+      body: {
+        accountName,
+        email,
+        password,
+        schoolName,
+        district,
+        address,
+        contact,
+        capacity,
+        accreditationScore,
+        certifiedTeachers,
+      },
     })
     localStorage.setItem('auth', JSON.stringify(auth))
     setUser(auth)

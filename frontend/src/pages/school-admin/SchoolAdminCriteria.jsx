@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useSchoolAdminData } from '../../hooks/useSchoolAdminData.js'
+import { apiJson } from '../../utils/api.js'
 
 const activeCriteria = [
-  { code: 'C1', name: 'Usia', weight: '30%', note: 'Prioritas usia >= 7 tahun per 1 Juli 2026' },
-  { code: 'C2', name: 'Domisili / Jarak', weight: '25%', note: 'Satu kelurahan = skor tertinggi' },
-  { code: 'C3', name: 'Nilai Rapor TK', weight: '15%', note: 'Rata-rata 7 aspek perkembangan' },
-  { code: 'C4', name: 'Prestasi Akademik', weight: '10%', note: 'Tingkat kecamatan hingga provinsi' },
-  { code: 'C5', name: 'Prestasi Non-Akademik', weight: '10%', note: 'Tingkat kecamatan hingga provinsi' },
-  { code: 'C6', name: 'Kelengkapan Dokumen', weight: '7%', note: 'Proporsi dokumen wajib tersedia' },
-  { code: 'C7', name: 'Kondisi Ekonomi', weight: '3%', note: 'Cost - keluarga kurang mampu diprioritaskan' },
+  { code: 'C1', name: 'Usia', weight: '40%', note: 'Prioritas usia >= 7 tahun per 1 Juli 2026' },
+  { code: 'C2', name: 'Domisili / Jarak', weight: '35%', note: 'Satu kelurahan = skor tertinggi' },
+  { code: 'C3', name: 'Nilai Rapor TK', weight: '10%', note: 'Rata-rata 7 aspek perkembangan' },
+  { code: 'C4', name: 'Prestasi', weight: '7%', note: 'Tingkat kecamatan hingga provinsi' },
+  { code: 'C5', name: 'Kelengkapan Dokumen', weight: '5%', note: 'Proporsi dokumen wajib tersedia' },
+  { code: 'C6', name: 'Kondisi Ekonomi', weight: '3%', note: 'Cost - keluarga kurang mampu diprioritaskan' },
 ]
 
 const statusConfig = {
@@ -42,16 +42,6 @@ export default function SchoolAdminCriteria() {
     })
   }
 
-  const getAuthHeaders = () => {
-    const auth = JSON.parse(localStorage.getItem('auth') || '{}')
-    return {
-      'x-auth-email': auth.email || '',
-      'x-auth-role': auth.role || '',
-      'x-auth-school-id': auth.schoolId != null ? String(auth.schoolId) : '',
-      'x-auth-school-name': auth.schoolName || '',
-    }
-  }
-
   const parseRequestShape = (req) => {
     const newCriteria = req?.newCriteria && typeof req.newCriteria === 'object' ? req.newCriteria : {}
     return {
@@ -70,20 +60,7 @@ export default function SchoolAdminCriteria() {
   const fetchHistoryRequests = async () => {
     setIsHistoryLoading(true)
     try {
-      let response = await fetch('/api/criteria-requests/mine', {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      })
-
-      if (response.status === 404) {
-        response = await fetch('/api/criteria-requests', {
-          method: 'GET',
-          headers: getAuthHeaders(),
-        })
-      }
-
-      if (!response.ok) throw new Error('Gagal mengambil data riwayat pengajuan')
-      const payload = await response.json()
+      const payload = await apiJson('/api/criteria-requests/mine')
       const normalized = Array.isArray(payload) ? payload.map(parseRequestShape) : []
       setHistoryRequests(normalized)
     } catch {
@@ -131,6 +108,7 @@ export default function SchoolAdminCriteria() {
     setErrors({})
 
     try {
+      const auth = JSON.parse(localStorage.getItem('auth') || '{}')
       const formData = new FormData()
       formData.append('schoolId', schoolToManage?.id)
       formData.append('schoolName', schoolToManage?.name)
@@ -142,9 +120,6 @@ export default function SchoolAdminCriteria() {
         formData.append('supportingDocument', formValues.supportingDocument)
       }
 
-      // Get auth info from localStorage for the multipart request
-      const auth = JSON.parse(localStorage.getItem('auth') || '{}')
-      
       const response = await fetch('/api/criteria-requests', {
         method: 'POST',
         headers: {

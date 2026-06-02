@@ -78,7 +78,7 @@ function hitungSkorPrestasi(data) {
   return skorTertinggi
 }
 
-function hitungSkorC6(dokumen, ageDecimal) {
+function hitungSkorC5(dokumen, ageDecimal) {
   const wajib = ['kk', 'akta', 'raporTK', 'foto']
   const isKondisionalWajib = Number(ageDecimal) >= 5.5 && Number(ageDecimal) < 6
   const totalWajib = isKondisionalWajib ? 5 : 4
@@ -88,7 +88,7 @@ function hitungSkorC6(dokumen, ageDecimal) {
   return (totalChecked / totalWajib) * 5
 }
 
-function hitungSkorC7(ekonomi) {
+function hitungSkorC6(ekonomi) {
   return SKOR_C7_MAP[ekonomi] || 0
 }
 
@@ -124,50 +124,36 @@ function getPrestasiTerbaikLabel(data) {
 
 function hitungSAW(formData) {
   const bobot = {
-    C1: 0.30,
-    C2: 0.25,
-    C3: 0.15,
-    C4: 0.10,
-    C5: 0.10,
-    C6: 0.07,
-    C7: 0.03,
+    C1: 0.40,
+    C2: 0.35,
+    C3: 0.10,
+    C4: 0.07,
+    C5: 0.05,
+    C6: 0.03,
   }
   const x = {
     C1: Number(formData.skorC1) || 0,
-    C2_Sokanegara: Number(formData.skorC2_Sokanegara) || 1,
-    C2_Kranji: Number(formData.skorC2_Kranji) || 1,
+    C2: Number(formData.skorC2) || 1,
     C3: Number(formData.raporRataRata) || 0,
     C4: Number(formData.skorC4) || 1,
-    C5: Number(formData.skorC5) || 1,
-    C6: Number(formData.skorC6) || 0,
-    C7: Number(formData.skorC7) || 1,
+    C5: Number(formData.skorC5) || 0,
+    C6: Number(formData.skorC6) || 1,
   }
-  const maxVal = { C1: 5, C2: 5, C3: 4, C4: 5, C5: 5, C6: 5, C7: 5 }
+  const maxVal = { C1: 5, C2: 5, C3: 4, C4: 5, C5: 5, C6: 5 }
   const r = {
     C1: x.C1 / maxVal.C1,
     C3: x.C3 / maxVal.C3,
     C4: x.C4 / maxVal.C4,
     C5: x.C5 / maxVal.C5,
-    C6: x.C6 / maxVal.C6,
-    C7: x.C7 > 0 ? 1 / x.C7 : 0,
+    C6: x.C6 > 0 ? 1 / x.C6 : 0,
   }
-  const vSokanegara = (
+  const score = (
     bobot.C1 * r.C1 +
-    bobot.C2 * (x.C2_Sokanegara / maxVal.C2) +
+    bobot.C2 * (x.C2 / maxVal.C2) +
     bobot.C3 * r.C3 +
     bobot.C4 * r.C4 +
     bobot.C5 * r.C5 +
-    bobot.C6 * r.C6 +
-    bobot.C7 * r.C7
-  )
-  const vKranji = (
-    bobot.C1 * r.C1 +
-    bobot.C2 * (x.C2_Kranji / maxVal.C2) +
-    bobot.C3 * r.C3 +
-    bobot.C4 * r.C4 +
-    bobot.C5 * r.C5 +
-    bobot.C6 * r.C6 +
-    bobot.C7 * r.C7
+    bobot.C6 * r.C6
   )
   const rows = [
     {
@@ -179,10 +165,10 @@ function hitungSAW(formData) {
     },
     {
       key: 'C2 Domisili',
-      display: `${Math.max(x.C2_Sokanegara, x.C2_Kranji)}/5`,
+      display: `${x.C2}/5`,
       bobot: bobot.C2,
-      kontribusi: bobot.C2 * Math.max(x.C2_Sokanegara, x.C2_Kranji) / 5,
-      progress: (Math.max(x.C2_Sokanegara, x.C2_Kranji) / 5) * 100,
+      kontribusi: bobot.C2 * x.C2 / 5,
+      progress: (x.C2 / 5) * 100,
     },
     {
       key: 'C3 Rapor TK',
@@ -192,40 +178,30 @@ function hitungSAW(formData) {
       progress: (x.C3 / 4) * 100,
     },
     {
-      key: 'C4 Prestasi Akademik',
+      key: 'C4 Prestasi',
       display: `${x.C4}/5`,
       bobot: bobot.C4,
       kontribusi: bobot.C4 * r.C4,
       progress: (x.C4 / 5) * 100,
     },
     {
-      key: 'C5 Prestasi Non-Akademik',
-      display: `${x.C5}/5`,
+      key: 'C5 Kelengkapan Dokumen',
+      display: `${x.C5.toFixed(2).replace('.', ',')}/5`,
       bobot: bobot.C5,
       kontribusi: bobot.C5 * r.C5,
       progress: (x.C5 / 5) * 100,
     },
     {
-      key: 'C6 Kelengkapan Dokumen',
-      display: `${x.C6.toFixed(2).replace('.', ',')}/5`,
+      key: 'C6 Kondisi Ekonomi',
+      display: `${x.C6}/5`,
       bobot: bobot.C6,
       kontribusi: bobot.C6 * r.C6,
       progress: (x.C6 / 5) * 100,
     },
-    {
-      key: 'C7 Kondisi Ekonomi',
-      display: `${x.C7}/5`,
-      bobot: bobot.C7,
-      kontribusi: bobot.C7 * r.C7,
-      progress: (x.C7 / 5) * 100,
-    },
   ]
 
   return {
-    vSokanegara: Number(vSokanegara.toFixed(4)),
-    vKranji: Number(vKranji.toFixed(4)),
-    skorTertinggi: Number(Math.max(vSokanegara, vKranji).toFixed(4)),
-    rekomendasi: vSokanegara >= vKranji ? 'SDN 1 Sokanegara' : 'SDN 1 Kranji',
+    score: Number(score.toFixed(4)),
     breakdown: { x, r, bobot, rows },
   }
 }
@@ -407,13 +383,40 @@ function normalizeWilayahName(text) {
     .trim()
 }
 
-function hitungSkorC2(kelurahan, kecamatan, sekolah) {
-  const lokasiSekolah = {
-    'SDN 1 Sokanegara': { kelurahan: 'Sokanegara', kecamatan: 'Purwokerto Timur' },
-    'SDN 1 Kranji': { kelurahan: 'Kranji', kecamatan: 'Purwokerto Timur' },
+const KNOWN_KECAMATAN = [
+  'Purwokerto Utara',
+  'Purwokerto Barat',
+  'Purwokerto Timur',
+  'Purwokerto Selatan',
+  'Sokaraja',
+  'Kembaran',
+  'Sumbang',
+  'Baturaden',
+]
+
+function inferSchoolLocation(school) {
+  const searchableText = [school?.name, school?.address, school?.district]
+    .map((value) => normalizeWilayahName(value))
+    .filter(Boolean)
+    .join(' ')
+
+  const matchedKelurahan = Object.keys(KELURAHAN_TO_KECAMATAN)
+    .sort((a, b) => b.length - a.length)
+    .find((key) => searchableText.includes(key)) || ''
+
+  const matchedKecamatan = KNOWN_KECAMATAN.find((item) => {
+    const normalized = normalizeWilayahName(item)
+    return searchableText.includes(normalized)
+  }) || ''
+
+  return {
+    kelurahan: matchedKelurahan,
+    kecamatan: matchedKecamatan || KELURAHAN_TO_KECAMATAN[matchedKelurahan] || '',
   }
-  const target = lokasiSekolah[sekolah]
-  if (!target) return 1
+}
+
+function hitungSkorC2(kelurahan, kecamatan, sekolah) {
+  const target = inferSchoolLocation(sekolah)
   if (normalizeWilayahName(kelurahan) === normalizeWilayahName(target.kelurahan)) return 5
   if (normalizeWilayahName(kecamatan) === normalizeWilayahName(target.kecamatan)) return 3
   return 1
@@ -421,12 +424,7 @@ function hitungSkorC2(kelurahan, kecamatan, sekolah) {
 
 function StepDomisili({ formData, setFormData, onNext, onBack }) {
   const [inlineError, setInlineError] = useState('')
-  const kecamatanOptions = [
-    'Purwokerto Utara',
-    'Purwokerto Barat',
-    'Purwokerto Timur',
-    'Purwokerto Selatan',
-  ]
+  const kecamatanOptions = KNOWN_KECAMATAN.slice(0, 4)
   const kelurahanByKecamatan = {
     'Purwokerto Utara': ['Bancarkembar', 'Purwanegara', 'Sumampir', 'Grendeng', 'Karangwangkal', 'Pabuaran', 'Bobosan'],
     'Purwokerto Barat': ['Bantarsoka', 'Karanglewas Lor', 'Kedungwuluh', 'Kober', 'Pasir Kidul', 'Pasirmuncang', 'Rejasari'],
@@ -440,18 +438,12 @@ function StepDomisili({ formData, setFormData, onNext, onBack }) {
     }
   }, [formData.kabupaten, setFormData])
 
-  const updateScoring = (kelurahan, kecamatan) => ({
-    skorC2_Sokanegara: hitungSkorC2(kelurahan, kecamatan, 'SDN 1 Sokanegara'),
-    skorC2_Kranji: hitungSkorC2(kelurahan, kecamatan, 'SDN 1 Kranji'),
-  })
-
   const handleKecamatanChange = (value) => {
     setFormData((prev) => ({
       ...prev,
       kabupaten: 'Banyumas',
       kecamatan: value,
       kelurahan: '',
-      ...updateScoring('', value),
     }))
     if (inlineError) setInlineError('')
   }
@@ -461,7 +453,6 @@ function StepDomisili({ formData, setFormData, onNext, onBack }) {
       ...prev,
       kabupaten: 'Banyumas',
       kelurahan: value,
-      ...updateScoring(value, prev.kecamatan || ''),
     }))
     if (inlineError) setInlineError('')
   }
@@ -677,29 +668,22 @@ function StepRaporTK({ formData, setFormData, onNext, onBack }) {
 }
 
 function StepPrestasiAnak({ formData, setFormData, onNext, onBack }) {
-  const [tipeAktif, setTipeAktif] = useState('akademik')
-  const prestasiAkademik = formData?.prestasiAkademik || createPrestasiState()
-  const prestasiNonAkademik = formData?.prestasiNonAkademik || createPrestasiState()
-  const dataAktif = tipeAktif === 'akademik' ? prestasiAkademik : prestasiNonAkademik
+  const prestasi = formData?.prestasi || createPrestasiState()
 
   const handleChangeNilai = (tingkatKey, juaraKey, value) => {
     const sanitizedValue = Math.max(0, Number(value) || 0)
-    const nextDataAktif = {
-      ...dataAktif,
+    const nextPrestasi = {
+      ...prestasi,
       [tingkatKey]: {
-        ...dataAktif[tingkatKey],
+        ...prestasi[tingkatKey],
         [juaraKey]: sanitizedValue,
       },
     }
-    const nextAkademik = tipeAktif === 'akademik' ? nextDataAktif : prestasiAkademik
-    const nextNonAkademik = tipeAktif === 'akademik' ? prestasiNonAkademik : nextDataAktif
 
     setFormData((prev) => ({
       ...prev,
-      prestasiAkademik: nextAkademik,
-      prestasiNonAkademik: nextNonAkademik,
-      skorC4: hitungSkorPrestasi(nextAkademik),
-      skorC5: hitungSkorPrestasi(nextNonAkademik),
+      prestasi: nextPrestasi,
+      skorC4: hitungSkorPrestasi(nextPrestasi),
     }))
   }
 
@@ -707,36 +691,7 @@ function StepPrestasiAnak({ formData, setFormData, onNext, onBack }) {
     <div className="space-y-5">
       <div>
         <div className="text-xl font-bold text-slate-900">Langkah 4 - Prestasi anak</div>
-        <div className="text-sm text-slate-600">Isi jika ada prestasi. Bukti tidak perlu diunggah, cukup ditandai di langkah berikutnya.</div>
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${tipeAktif === 'akademik' ? 'border-teal-600 bg-teal-50' : 'border-slate-300 bg-white hover:bg-slate-50'}`}>
-          <input
-            type="radio"
-            name="tipePrestasi"
-            checked={tipeAktif === 'akademik'}
-            onChange={() => setTipeAktif('akademik')}
-            className="mt-1 h-4 w-4 accent-teal-600"
-          />
-          <div className="space-y-1">
-            <div className="font-semibold text-slate-900">Prestasi akademik</div>
-            <div className="text-sm text-slate-600">Contoh: olimpiade, lomba sains, lomba mata pelajaran.</div>
-          </div>
-        </label>
-        <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${tipeAktif === 'nonAkademik' ? 'border-teal-600 bg-teal-50' : 'border-slate-300 bg-white hover:bg-slate-50'}`}>
-          <input
-            type="radio"
-            name="tipePrestasi"
-            checked={tipeAktif === 'nonAkademik'}
-            onChange={() => setTipeAktif('nonAkademik')}
-            className="mt-1 h-4 w-4 accent-teal-600"
-          />
-          <div className="space-y-1">
-            <div className="font-semibold text-slate-900">Prestasi non-akademik</div>
-            <div className="text-sm text-slate-600">Contoh: seni, olahraga, bahasa, pramuka.</div>
-          </div>
-        </label>
+        <div className="text-sm text-slate-600">Isi jika ada prestasi (akademik atau non-akademik). Bukti tidak perlu diunggah, cukup ditandai di langkah berikutnya.</div>
       </div>
 
       <div className="relative">
@@ -752,14 +707,14 @@ function StepPrestasiAnak({ formData, setFormData, onNext, onBack }) {
             </thead>
             <tbody>
               {PRESTASI_LEVELS.map((level) => (
-                <tr key={`${tipeAktif}-${level.key}`} className="border-t border-slate-200">
+                <tr key={level.key} className="border-t border-slate-200">
                   <td className="px-3 py-3 font-medium text-slate-700">{level.label}</td>
                   {PRESTASI_JUARA.map((juara) => (
-                    <td key={`${tipeAktif}-${level.key}-${juara.key}`} className="px-3 py-2">
+                    <td key={`${level.key}-${juara.key}`} className="px-3 py-2">
                       <input
                         type="number"
                         min="0"
-                        value={dataAktif[level.key]?.[juara.key] ?? 0}
+                        value={prestasi[level.key]?.[juara.key] ?? 0}
                         onChange={(e) => handleChangeNilai(level.key, juara.key, e.target.value)}
                         className="h-12 w-24 min-w-[4.5rem] rounded-lg border border-slate-300 px-3 text-lg"
                       />
@@ -849,8 +804,8 @@ function StepDokumenEkonomi({ formData, setFormData, onNext, onBack }) {
     setFormData((prev) => ({
       ...prev,
       dokumen: nextDokumen,
-      skorC6: Number(hitungSkorC6(nextDokumen, ageDecimal).toFixed(2)),
-      skorC7: hitungSkorC7(kondisiEkonomi),
+      skorC5: Number(hitungSkorC5(nextDokumen, ageDecimal).toFixed(2)),
+      skorC6: hitungSkorC6(kondisiEkonomi),
     }))
     if (inlineError) setInlineError('')
   }
@@ -859,8 +814,8 @@ function StepDokumenEkonomi({ formData, setFormData, onNext, onBack }) {
     setFormData((prev) => ({
       ...prev,
       kondisiEkonomi: value,
-      skorC6: Number(hitungSkorC6(dokumen, ageDecimal).toFixed(2)),
-      skorC7: hitungSkorC7(value),
+      skorC5: Number(hitungSkorC5(dokumen, ageDecimal).toFixed(2)),
+      skorC6: hitungSkorC6(value),
     }))
     if (inlineError) setInlineError('')
   }
@@ -978,12 +933,8 @@ export default function Kelayakan() {
   const [kabupaten, setKabupaten] = useState('Banyumas')
   const [kelurahan, setKelurahan] = useState('')
   const [kecamatan, setKecamatan] = useState('')
-  const [skorC2Sokanegara, setSkorC2Sokanegara] = useState(1)
-  const [skorC2Kranji, setSkorC2Kranji] = useState(1)
-  const [prestasiAkademik, setPrestasiAkademik] = useState(createPrestasiState)
-  const [prestasiNonAkademik, setPrestasiNonAkademik] = useState(createPrestasiState)
+  const [prestasi, setPrestasi] = useState(createPrestasiState)
   const [skorC4, setSkorC4] = useState(1)
-  const [skorC5, setSkorC5] = useState(1)
   const [raporAspek, setRaporAspek] = useState({})
   const [raporRataRata, setRaporRataRata] = useState(null)
   const [skorC3, setSkorC3] = useState(null)
@@ -996,8 +947,8 @@ export default function Kelayakan() {
     sertifikat: false,
   })
   const [kondisiEkonomi, setKondisiEkonomi] = useState('')
+  const [skorC5, setSkorC5] = useState(0)
   const [skorC6, setSkorC6] = useState(0)
-  const [skorC7, setSkorC7] = useState(0)
   const [parentInvolvement, setParentInvolvement] = useState('')
   const [result, setResult] = useState(null)
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -1005,29 +956,17 @@ export default function Kelayakan() {
     kabupaten,
     kelurahan,
     kecamatan,
-    skorC2_Sokanegara: skorC2Sokanegara,
-    skorC2_Kranji: skorC2Kranji,
-  }), [
-    kabupaten,
-    kelurahan,
-    kecamatan,
-    skorC2Sokanegara,
-    skorC2Kranji,
-  ])
+  }), [kabupaten, kelurahan, kecamatan])
   const setDomisiliFormData = (updater) => {
     const prev = {
       kabupaten,
       kelurahan,
       kecamatan,
-      skorC2_Sokanegara: skorC2Sokanegara,
-      skorC2_Kranji: skorC2Kranji,
     }
     const next = typeof updater === 'function' ? updater(prev) : updater
     setKabupaten(next.kabupaten || 'Banyumas')
     setKelurahan(next.kelurahan ?? '')
     setKecamatan(next.kecamatan ?? '')
-    setSkorC2Sokanegara(Number(next.skorC2_Sokanegara) || 1)
-    setSkorC2Kranji(Number(next.skorC2_Kranji) || 1)
   }
   const raporFormData = useMemo(() => ({
     raporAspek,
@@ -1082,40 +1021,33 @@ export default function Kelayakan() {
   }, [ageOnReference])
 
   const prestasiFormData = useMemo(() => ({
-    prestasiAkademik,
-    prestasiNonAkademik,
+    prestasi,
     skorC4,
-    skorC5,
-  }), [prestasiAkademik, prestasiNonAkademik, skorC4, skorC5])
+  }), [prestasi, skorC4])
   const setPrestasiFormData = (updater) => {
     const prev = {
-      prestasiAkademik,
-      prestasiNonAkademik,
+      prestasi,
       skorC4,
-      skorC5,
     }
     const next = typeof updater === 'function' ? updater(prev) : updater
-    const nextPrestasiAkademik = next?.prestasiAkademik || createPrestasiState()
-    const nextPrestasiNonAkademik = next?.prestasiNonAkademik || createPrestasiState()
-    setPrestasiAkademik(nextPrestasiAkademik)
-    setPrestasiNonAkademik(nextPrestasiNonAkademik)
-    setSkorC4(Number(next?.skorC4) || hitungSkorPrestasi(nextPrestasiAkademik))
-    setSkorC5(Number(next?.skorC5) || hitungSkorPrestasi(nextPrestasiNonAkademik))
+    const nextPrestasi = next?.prestasi || createPrestasiState()
+    setPrestasi(nextPrestasi)
+    setSkorC4(Number(next?.skorC4) || hitungSkorPrestasi(nextPrestasi))
   }
   const dokumenFormData = useMemo(() => ({
     ageDecimal: ageOnReference.decimal,
     dokumen,
     kondisiEkonomi,
+    skorC5,
     skorC6,
-    skorC7,
-  }), [ageOnReference.decimal, dokumen, kondisiEkonomi, skorC6, skorC7])
+  }), [ageOnReference.decimal, dokumen, kondisiEkonomi, skorC5, skorC6])
   const setDokumenFormData = (updater) => {
     const prev = {
       ageDecimal: ageOnReference.decimal,
       dokumen,
       kondisiEkonomi,
+      skorC5,
       skorC6,
-      skorC7,
     }
     const next = typeof updater === 'function' ? updater(prev) : updater
     const nextDokumen = next?.dokumen || {
@@ -1127,16 +1059,16 @@ export default function Kelayakan() {
       sertifikat: false,
     }
     const nextKondisiEkonomi = next?.kondisiEkonomi || ''
+    const nextSkorC5 = Number.isFinite(next?.skorC5)
+      ? Number(next.skorC5)
+      : Number(hitungSkorC5(nextDokumen, ageOnReference.decimal).toFixed(2))
     const nextSkorC6 = Number.isFinite(next?.skorC6)
       ? Number(next.skorC6)
-      : Number(hitungSkorC6(nextDokumen, ageOnReference.decimal).toFixed(2))
-    const nextSkorC7 = Number.isFinite(next?.skorC7)
-      ? Number(next.skorC7)
-      : hitungSkorC7(nextKondisiEkonomi)
+      : hitungSkorC6(nextKondisiEkonomi)
     setDokumen(nextDokumen)
     setKondisiEkonomi(nextKondisiEkonomi)
+    setSkorC5(nextSkorC5)
     setSkorC6(nextSkorC6)
-    setSkorC7(nextSkorC7)
   }
 
   useEffect(() => {
@@ -1148,14 +1080,12 @@ export default function Kelayakan() {
     kelurahan,
     kecamatan,
     reportScore,
-    prestasiAkademik,
-    prestasiNonAkademik,
+    prestasi,
     skorC4,
-    skorC5,
     dokumen,
     kondisiEkonomi,
+    skorC5,
     skorC6,
-    skorC7,
     parentInvolvement,
   ])
 
@@ -1179,15 +1109,11 @@ export default function Kelayakan() {
         kelurahan,
         kecamatan,
         alamat: alamatDomisili || '-',
-        skorC2_Sokanegara: skorC2Sokanegara,
-        skorC2_Kranji: skorC2Kranji,
         skorC3: skorC3 ?? 0,
         skorC4: skorC4 ?? 1,
-        skorC5: skorC5 ?? 1,
+        skorC5: Number(skorC5) || 0,
         skorC6: Number(skorC6) || 0,
-        skorC7: Number(skorC7) || 0,
-        prestasiAkademik,
-        prestasiNonAkademik,
+        prestasi,
         raporAspek,
         raporRataRata: raporRataRata ?? 0,
         reportScore: Number(reportScore) || 0,
@@ -1245,41 +1171,41 @@ export default function Kelayakan() {
       setCurrentStep(5)
       return
     }
-    const saw = hitungSAW({
-      skorC1,
-      skorC2_Sokanegara: skorC2Sokanegara,
-      skorC2_Kranji: skorC2Kranji,
-      raporRataRata,
-      skorC4,
-      skorC5,
-      skorC6,
-      skorC7,
-    })
-    const schoolSokanegara = schools.find((item) => String(item?.name || '').toLowerCase().includes('sokanegara'))
-    const schoolKranji = schools.find((item) => String(item?.name || '').toLowerCase().includes('kranji'))
-    const schoolsRanked = [
-      {
-        id: Number(schoolSokanegara?.id) || 2,
-        name: schoolSokanegara?.name || 'SDN 1 Sokanegara',
-        score: saw.vSokanegara,
-      },
-      {
-        id: Number(schoolKranji?.id) || 1,
-        name: schoolKranji?.name || 'SDN 1 Kranji',
-        score: saw.vKranji,
-      },
-    ].sort((a, b) => b.score - a.score)
+    if (!schools.length) {
+      alert('Data sekolah belum tersedia. Coba muat ulang halaman lalu hitung kembali.')
+      return
+    }
+
+    const schoolsRanked = schools
+      .map((school) => {
+        const saw = hitungSAW({
+          skorC1,
+          skorC2: hitungSkorC2(kelurahan, kecamatan, school),
+          raporRataRata,
+          skorC4,
+          skorC5,
+          skorC6,
+        })
+        return {
+          id: Number(school?.id) || 0,
+          name: school?.name || 'Sekolah',
+          score: saw.score,
+          breakdown: saw.breakdown,
+        }
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.min(2, schools.length))
       .map((item, index) => ({
         ...item,
         note: getKeteranganSekolah(index),
       }))
+
+    const topRecommendation = schoolsRanked[0]
     const resultPayload = {
-      score: saw.skorTertinggi,
-      status: getLabelStatusKelayakan(saw.skorTertinggi),
-      rows: saw.breakdown.rows,
+      score: Number(topRecommendation?.score || 0),
+      status: getLabelStatusKelayakan(Number(topRecommendation?.score || 0)),
+      rows: topRecommendation?.breakdown?.rows || [],
       recommendations: schoolsRanked,
-      vSokanegara: saw.vSokanegara,
-      vKranji: saw.vKranji,
     }
     setResult(resultPayload)
     setShowBreakdown(false)
@@ -1305,6 +1231,9 @@ export default function Kelayakan() {
         <td>${Math.round(row.bobot * 100)}%</td>
         <td>${row.kontribusi.toFixed(2).replace('.', ',')}</td>
       </tr>
+    `).join('')
+    const recommendationRows = result.recommendations.map((item, index) => `
+          <div class="meta">${index + 1}. ${item.name || '-'} — Skor: ${formatV(item.score)} (${index === 0 ? 'Rekomendasi utama' : 'Alternatif'})</div>
     `).join('')
     const html = `
       <html>
@@ -1337,8 +1266,7 @@ export default function Kelayakan() {
 
           <h2>REKOMENDASI SEKOLAH</h2>
           <div class="line"></div>
-          <div class="meta">1. ${result.recommendations[0]?.name || '-'} — Skor: ${formatV(result.recommendations[0]?.score)} (Rekomendasi utama)</div>
-          <div class="meta">2. ${result.recommendations[1]?.name || '-'} — Skor: ${formatV(result.recommendations[1]?.score)} (Alternatif kedua)</div>
+          ${recommendationRows || '<div class="meta">-</div>'}
 
           <h2>DETAIL KRITERIA</h2>
           <div class="line"></div>
@@ -1380,12 +1308,9 @@ export default function Kelayakan() {
     setKabupaten('Banyumas')
     setKelurahan('')
     setKecamatan('')
-    setSkorC2Sokanegara(1)
-    setSkorC2Kranji(1)
-    setPrestasiAkademik(createPrestasiState())
-    setPrestasiNonAkademik(createPrestasiState())
+    setPrestasi(createPrestasiState())
     setSkorC4(1)
-    setSkorC5(1)
+    setSkorC5(0)
     setRaporAspek({})
     setRaporRataRata(null)
     setSkorC3(null)
@@ -1399,7 +1324,6 @@ export default function Kelayakan() {
     })
     setKondisiEkonomi('')
     setSkorC6(0)
-    setSkorC7(0)
     setParentInvolvement('')
   }
 
@@ -1426,8 +1350,7 @@ export default function Kelayakan() {
     kedua_orangtua: 'Kedua orang tua',
     wali: 'Wali',
   }
-  const prestasiAkademikTerbaik = getPrestasiTerbaikLabel(prestasiAkademik)
-  const prestasiNonAkademikTerbaik = getPrestasiTerbaikLabel(prestasiNonAkademik)
+  const prestasiTerbaik = getPrestasiTerbaikLabel(prestasi)
   const formatV = (value) => Number(value || 0).toFixed(2).replace('.', ',')
 
   const stepItems = [
@@ -1701,8 +1624,7 @@ export default function Kelayakan() {
                       <div className="font-semibold text-slate-600">Kelurahan</div><div className="font-semibold">{kelurahan || '-'}</div>
                       <div className="font-semibold text-slate-600">Kecamatan</div><div className="font-semibold">{kecamatan || '-'}</div>
                       <div className="font-semibold text-slate-600">Rata-rata rapor TK</div><div className="font-semibold">{raporRataRata == null ? '-' : `${raporRataRata.toFixed(2).replace('.', ',')} / 4`}</div>
-                      <div className="font-semibold text-slate-600">Prestasi akademik terbaik</div><div className="font-semibold">{prestasiAkademikTerbaik}</div>
-                      <div className="font-semibold text-slate-600">Prestasi non-akademik terbaik</div><div className="font-semibold">{prestasiNonAkademikTerbaik}</div>
+                      <div className="font-semibold text-slate-600">Prestasi terbaik</div><div className="font-semibold">{prestasiTerbaik}</div>
                       <div className="font-semibold text-slate-600">Dokumen tersedia</div><div className="font-semibold">{checkedDocs.length ? checkedDocs.join(', ') : '-'}</div>
                       <div className="font-semibold text-slate-600">Kondisi ekonomi</div><div className="font-semibold">{economyLabelMap[kondisiEkonomi] || '-'}</div>
                     </div>

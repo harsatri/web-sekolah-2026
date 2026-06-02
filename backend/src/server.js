@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import cors from 'cors'
 import express from 'express'
 import multer from 'multer'
+import bcrypt from 'bcrypt'
 import { createPoolFromEnv, queryOne } from './db.js'
 
 dotenv.config()
@@ -116,7 +117,11 @@ app.post('/api/auth/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ message: 'Email dan password wajib diisi' })
 
   const user = await queryOne(pool, 'SELECT * FROM users WHERE email = ?', [email])
-  if (!user || user.password !== password) return res.status(401).json({ message: 'Email atau password salah' })
+  if (!user) return res.status(401).json({ message: 'Email atau password salah' })
+  
+  const passwordMatch = await bcrypt.compare(password, user.password)
+  if (!passwordMatch) return res.status(401).json({ message: 'Email atau password salah' })
+  
   if (Number(user.active) === 0) return res.status(403).json({ message: 'Akun Anda sedang dinonaktifkan' })
 
   const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -140,9 +145,10 @@ app.post('/api/auth/signup', async (req, res) => {
   const exists = await queryOne(pool, 'SELECT id FROM users WHERE email = ?', [email])
   if (exists) return res.status(409).json({ message: 'Email sudah terdaftar' })
 
+  const hashedPassword = await bcrypt.hash(password, 10)
   await pool.query(
     'INSERT INTO users (name, email, password, role, active) VALUES (?, ?, ?, ?, ?)',
-    [name, email, password, 'user', 1],
+    [name, email, hashedPassword, 'user', 1],
   )
 
   okJson(res, { name, email, role: 'user' })
@@ -153,18 +159,78 @@ app.post('/api/auth/signup-school', async (req, res) => {
   const email = String(req.body?.email || '').trim()
   const password = String(req.body?.password || '')
   const schoolName = String(req.body?.schoolName || '').trim()
-  if (!email || !password) return res.status(400).json({ message: 'Data belum lengkap' })
+  const district = String(req.body?.district || '').trim()
+  const address = String(req.body?.address || '').trim()
+  const contact = String(req.body?.contact || '').trim()
+  const capacity = Number(req.body?.capacity) || 0
+  const accreditationScore = Number(req.body?.accreditationScore) || 0
+  const certifiedTeachers = Number(req.body?.certifiedTeachers) || 0
+  if (!email || !password || !schoolName || !district || !address || !contact) {
+    return res.status(400).json({ message: 'Data sekolah belum lengkap' })
+  }
 
   const exists = await queryOne(pool, 'SELECT id FROM users WHERE email = ?', [email])
   if (exists) return res.status(409).json({ message: 'Email sudah terdaftar' })
 
-  const name = accountName || schoolName || 'Sekolah'
-  await pool.query(
-    'INSERT INTO users (name, email, password, role, active, schoolName) VALUES (?, ?, ?, ?, ?, ?)',
-    [name, email, password, 'school', 1, schoolName || null],
-  )
+  const schoolExists = await queryOne(pool, 'SELECT id FROM schools WHERE LOWER(name) = LOWER(?) AND LOWER(district) = LOWER(?)', [schoolName, district])
+  if (schoolExists) return res.status(409).json({ message: 'Sekolah sudah terdaftar di wilayah tersebut' })
 
-  okJson(res, { name, email, role: 'school' })
+  const name = accountName || schoolName || 'Sekolah'
+  const hashedPassword = await bcrypt.hash(password, 10)
+  
+  const conn = await pool.getConnection()
+  try {
+    await conn.beginTransaction()
+    
+    const [schoolResult] = await conn.query(
+      `INSERT INTO schools (
+        name, district, address, contact, gps, accreditation, accreditationScore, capacity, graduationRate, avgExam,
+        achievements, certifiedTeachers, rating, review, facilities, programs, extracurriculars, ratio, gallery,
+        principalName, monthlyTarget, graduationStats, galleryLink, achievementDesc, programDetail
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        schoolName,
+        district,
+        address,
+        contact,
+        '-',
+        '',
+        accreditationScore,
+        capacity,
+        0,
+        0,
+        0,
+        certifiedTeachers,
+        0,
+        '',
+        JSON.stringify([]),
+        JSON.stringify([]),
+        JSON.stringify([]),
+        '',
+        JSON.stringify([]),
+        '',
+        null,
+        '',
+        '',
+        '',
+        '',
+      ]
+    )
+    const schoolId = schoolResult.insertId
+    
+    await conn.query(
+      'INSERT INTO users (name, email, password, role, active, schoolId, schoolName) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, 'school_admin', 1, schoolId, schoolName],
+    )
+    
+    await conn.commit()
+    okJson(res, { name, email, role: 'school_admin', schoolId, schoolName })
+  } catch (err) {
+    await conn.rollback()
+    res.status(500).json({ message: 'Gagal mendaftarkan sekolah' })
+  } finally {
+    conn.release()
+  }
 })
 
 app.post('/api/upload', requireAuth, async (req, res) => {
@@ -189,7 +255,19 @@ app.post('/api/upload', requireAuth, async (req, res) => {
 })
 
 app.get('/api/schools', async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM schools ORDER BY id ASC')
+  const auth = getAuthFromRequest(req)
+  const isSchoolScopedRole = auth?.role === 'school_admin' || auth?.role === 'school'
+  let query = 'SELECT * FROM schools ORDER BY id ASC'
+  let params = []
+
+  if (isSchoolScopedRole) {
+    const scopedSchoolId = Number(auth?.schoolId)
+    if (!Number.isFinite(scopedSchoolId)) return okJson(res, [])
+    query = 'SELECT * FROM schools WHERE id = ? ORDER BY id ASC'
+    params = [scopedSchoolId]
+  }
+
+  const [rows] = await pool.query(query, params)
   const mapped = rows.map((row) => ({
     ...row,
     id: Number(row.id),
@@ -214,7 +292,42 @@ app.get('/api/schools', async (req, res) => {
   okJson(res, mapped)
 })
 
-app.post('/api/schools', async (req, res) => {
+app.get('/api/schools/:id', async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isFinite(id)) return res.status(400).json({ message: 'ID sekolah tidak valid' })
+  const auth = getAuthFromRequest(req)
+  if ((auth?.role === 'school_admin' || auth?.role === 'school') && Number(auth?.schoolId) !== id) {
+    return res.status(403).json({ message: 'Anda tidak memiliki akses ke sekolah ini' })
+  }
+
+  const row = await queryOne(pool, 'SELECT * FROM schools WHERE id = ?', [id])
+  if (!row) return res.status(404).json({ message: 'Sekolah tidak ditemukan' })
+
+  const mapped = {
+    ...row,
+    id: Number(row.id),
+    accreditationScore: Number(row.accreditationScore),
+    capacity: Number(row.capacity),
+    graduationRate: Number(row.graduationRate),
+    avgExam: Number(row.avgExam),
+    achievements: Number(row.achievements),
+    certifiedTeachers: Number(row.certifiedTeachers),
+    rating: Number(row.rating),
+    facilities: JSON.parse(row.facilities || '[]'),
+    programs: JSON.parse(row.programs || '[]'),
+    extracurriculars: JSON.parse(row.extracurriculars || '[]'),
+    gallery: JSON.parse(row.gallery || '[]'),
+    principalName: row.principalName ?? '',
+    monthlyTarget: row.monthlyTarget != null ? Number(row.monthlyTarget) : '',
+    graduationStats: row.graduationStats ?? '',
+    galleryLink: row.galleryLink ?? '',
+    achievementDesc: row.achievementDesc ?? '',
+    programDetail: row.programDetail ?? '',
+  }
+  okJson(res, mapped)
+})
+
+app.post('/api/schools', requireRole(['super_admin']), async (req, res) => {
   const payload = req.body || {}
   const name = String(payload.name || '').trim()
   const district = String(payload.district || '').trim()
@@ -309,9 +422,15 @@ app.post('/api/schools', async (req, res) => {
   })
 })
 
-app.put('/api/schools/:id', async (req, res) => {
+app.put('/api/schools/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) return res.status(400).json({ message: 'ID sekolah tidak valid' })
+  if (req.auth.role === 'school_admin' && Number(req.auth.schoolId) !== id) {
+    return res.status(403).json({ message: 'Anda tidak memiliki akses ke sekolah ini' })
+  }
+  if (!['school_admin', 'super_admin'].includes(req.auth.role)) {
+    return res.status(403).json({ message: 'Forbidden' })
+  }
 
   const payload = req.body || {}
   const name = String(payload.name || '').trim()
@@ -409,7 +528,7 @@ app.put('/api/schools/:id', async (req, res) => {
   })
 })
 
-app.delete('/api/schools/:id', async (req, res) => {
+app.delete('/api/schools/:id', requireRole(['super_admin']), async (req, res) => {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) return res.status(400).json({ message: 'ID sekolah tidak valid' })
   await pool.query('DELETE FROM schools WHERE id = ?', [id])
@@ -432,6 +551,84 @@ app.get('/api/users', requireRole(['super_admin']), async (req, res) => {
   okJson(res, mapped)
 })
 
+app.post('/api/users', requireRole(['super_admin']), async (req, res) => {
+  const name = String(req.body?.name || '').trim()
+  const email = String(req.body?.email || '').trim()
+  const password = String(req.body?.password || '')
+  const role = String(req.body?.role || 'user')
+  const schoolId = req.body?.schoolId != null && req.body.schoolId !== '' ? Number(req.body.schoolId) : null
+  const schoolName = req.body?.schoolName != null ? String(req.body.schoolName) : null
+
+  if (!name || !email || !password) return res.status(400).json({ message: 'Data belum lengkap' })
+
+  const exists = await queryOne(pool, 'SELECT id FROM users WHERE email = ?', [email])
+  if (exists) return res.status(409).json({ message: 'Email sudah terdaftar' })
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+  const [result] = await pool.query(
+    'INSERT INTO users (name, email, password, role, active, schoolId, schoolName) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [name, email, hashedPassword, role, 1, schoolId, schoolName],
+  )
+
+  okJson(res, { id: Number(result.insertId), name, email, role, schoolId, schoolName })
+})
+
+app.put('/api/users/:id', requireRole(['super_admin']), async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isFinite(id)) return res.status(400).json({ message: 'ID user tidak valid' })
+
+  const name = String(req.body?.name || '').trim()
+  const email = String(req.body?.email || '').trim()
+  const password = String(req.body?.password || '')
+  const role = String(req.body?.role || 'user')
+  const active = req.body?.active === false ? 0 : 1
+  const schoolId = req.body?.schoolId != null && req.body.schoolId !== '' ? Number(req.body.schoolId) : null
+  const schoolName = req.body?.schoolName != null ? String(req.body.schoolName) : null
+
+  if (!name || !email) return res.status(400).json({ message: 'Data belum lengkap' })
+
+  const existing = await queryOne(pool, 'SELECT id, email FROM users WHERE id = ?', [id])
+  if (!existing) return res.status(404).json({ message: 'User tidak ditemukan' })
+
+  const emailExists = await queryOne(pool, 'SELECT id FROM users WHERE email = ? AND id != ?', [email, id])
+  if (emailExists) return res.status(409).json({ message: 'Email sudah digunakan oleh user lain' })
+
+  let query = 'UPDATE users SET name=?, email=?, role=?, active=?, schoolId=?, schoolName=?'
+  let params = [name, email, role, active, schoolId, schoolName]
+
+  if (password) {
+    const hashedPassword = await bcrypt.hash(password, 10)
+    query += ', password=?'
+    params.push(hashedPassword)
+  }
+
+  query += ' WHERE id=?'
+  params.push(id)
+
+  await pool.query(query, params)
+  okJson(res, { ok: true })
+})
+
+app.patch('/api/users/:id/toggle', requireRole(['super_admin']), async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isFinite(id)) return res.status(400).json({ message: 'ID user tidak valid' })
+
+  const user = await queryOne(pool, 'SELECT id, active FROM users WHERE id = ?', [id])
+  if (!user) return res.status(404).json({ message: 'User tidak ditemukan' })
+
+  const newActive = Number(user.active) === 1 ? 0 : 1
+  await pool.query('UPDATE users SET active = ? WHERE id = ?', [newActive, id])
+  okJson(res, { ok: true, active: newActive === 1 })
+})
+
+app.delete('/api/users/:id', requireRole(['super_admin']), async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isFinite(id)) return res.status(400).json({ message: 'ID user tidak valid' })
+
+  await pool.query('DELETE FROM users WHERE id = ?', [id])
+  okJson(res, { ok: true })
+})
+
 app.put('/api/users/bulk', requireRole(['super_admin']), async (req, res) => {
   const nextUsers = Array.isArray(req.body) ? req.body : null
   if (!nextUsers) return res.status(400).json({ message: 'Payload tidak valid' })
@@ -439,8 +636,8 @@ app.put('/api/users/bulk', requireRole(['super_admin']), async (req, res) => {
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
-    const [existingRows] = await conn.query('SELECT id, email FROM users')
-    const existingByEmail = new Map(existingRows.map((row) => [row.email, Number(row.id)]))
+    const [existingRows] = await conn.query('SELECT id, email, password FROM users')
+    const existingByEmail = new Map(existingRows.map((row) => [row.email, { id: Number(row.id), password: row.password }]))
     const incomingEmails = new Set()
 
     for (const item of nextUsers) {
@@ -456,16 +653,24 @@ app.put('/api/users/bulk', requireRole(['super_admin']), async (req, res) => {
       if (!email) continue
       incomingEmails.add(email)
 
-      const existingId = existingByEmail.get(email)
-      if (existingId) {
+      const existing = existingByEmail.get(email)
+      let passwordToSave = password
+
+      if (existing) {
+        if (!password || password.startsWith('$2b$') || password.startsWith('$2a$') || password.startsWith('$2y$')) {
+          passwordToSave = existing.password
+        } else {
+          passwordToSave = await bcrypt.hash(password, 10)
+        }
         await conn.query(
           'UPDATE users SET name=?, password=?, role=?, active=?, schoolId=?, schoolName=?, lastLogin=? WHERE id=?',
-          [name, password, role, active, schoolId, schoolName, lastLogin, existingId],
+          [name, passwordToSave, role, active, schoolId, schoolName, lastLogin, existing.id],
         )
       } else {
+        passwordToSave = password ? await bcrypt.hash(password, 10) : await bcrypt.hash('password123', 10)
         await conn.query(
           'INSERT INTO users (name, email, password, role, active, schoolId, schoolName, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [name, email, password, role, active, schoolId, schoolName, lastLogin],
+          [name, email, passwordToSave, role, active, schoolId, schoolName, lastLogin],
         )
       }
     }
@@ -492,10 +697,12 @@ app.get('/api/eligibility-submissions', requireAuth, async (req, res) => {
   const querySchoolId = req.query.schoolId != null ? Number(req.query.schoolId) : null
   const querySchoolName = String(req.query.schoolName || '').trim()
   const isSchoolScopedRole = req.auth?.role === 'school_admin' || req.auth?.role === 'school'
-  const targetSchoolId = Number.isFinite(querySchoolId)
-    ? querySchoolId
-    : (isSchoolScopedRole && Number.isFinite(req.auth?.schoolId) ? Number(req.auth.schoolId) : null)
-  const targetSchoolName = querySchoolName || (isSchoolScopedRole ? String(req.auth?.schoolName || '').trim() : '')
+  const targetSchoolId = isSchoolScopedRole
+    ? (Number.isFinite(req.auth?.schoolId) ? Number(req.auth.schoolId) : null)
+    : (Number.isFinite(querySchoolId) ? querySchoolId : null)
+  const targetSchoolName = isSchoolScopedRole
+    ? String(req.auth?.schoolName || '').trim()
+    : querySchoolName
 
   const [rows] = await pool.query('SELECT * FROM eligibility_submissions ORDER BY submittedAt DESC')
   const mapped = rows
@@ -619,31 +826,48 @@ app.post('/api/activity-logs', requireAuth, async (req, res) => {
 })
 
 // Criteria Requests Endpoints
+function mapCriteriaRequestRows(rows) {
+  return rows.map((row) => ({
+    ...row,
+    oldCriteria: JSON.parse(row.oldCriteria || '{}'),
+    newCriteria: JSON.parse(row.newCriteria || '{}'),
+  }))
+}
+
 app.get('/api/criteria-requests', requireAuth, async (req, res) => {
+  const isSchoolScopedRole = req.auth.role === 'school_admin' || req.auth.role === 'school'
   let query = 'SELECT * FROM criteria_requests ORDER BY createdAt DESC'
   let params = []
 
-  if (req.auth.role === 'school_admin' && req.auth.schoolId) {
+  if (isSchoolScopedRole) {
+    if (!req.auth.schoolId) return okJson(res, [])
     query = 'SELECT * FROM criteria_requests WHERE schoolId = ? ORDER BY createdAt DESC'
     params = [req.auth.schoolId]
   }
 
   const [rows] = await pool.query(query, params)
-  const mapped = rows.map(row => ({
-    ...row,
-    oldCriteria: JSON.parse(row.oldCriteria || '{}'),
-    newCriteria: JSON.parse(row.newCriteria || '{}'),
-  }))
-  okJson(res, mapped)
+  okJson(res, mapCriteriaRequestRows(rows))
+})
+
+app.get('/api/criteria-requests/mine', requireAuth, async (req, res) => {
+  const isSchoolScopedRole = req.auth.role === 'school_admin' || req.auth.role === 'school'
+  if (!isSchoolScopedRole) return res.status(403).json({ message: 'Forbidden' })
+  if (!req.auth.schoolId) return okJson(res, [])
+
+  const [rows] = await pool.query(
+    'SELECT * FROM criteria_requests WHERE schoolId = ? ORDER BY createdAt DESC',
+    [req.auth.schoolId],
+  )
+  okJson(res, mapCriteriaRequestRows(rows))
 })
 
 app.post('/api/criteria-requests', requireRole(['school_admin']), upload.single('supportingDocument'), async (req, res) => {
   const adminUser = await queryOne(pool, 'SELECT id, name FROM users WHERE email = ?', [req.auth.email])
   if (!adminUser) return res.status(403).json({ message: 'Akun admin tidak ditemukan' })
 
-  const parsedSchoolId = Number(req.body?.schoolId ?? req.auth.schoolId)
+  const parsedSchoolId = Number(req.auth.schoolId)
   if (!Number.isFinite(parsedSchoolId)) return res.status(400).json({ message: 'schoolId tidak valid' })
-  const schoolName = String(req.body?.schoolName || req.auth.schoolName || '').trim()
+  const schoolName = String(req.auth.schoolName || req.body?.schoolName || '').trim()
   const reason = String(req.body?.reason || '').trim()
   if (!reason) return res.status(400).json({ message: 'Alasan / justifikasi wajib diisi' })
 
@@ -748,10 +972,33 @@ app.patch('/api/criteria-requests/:id/reject', requireRole(['super_admin']), asy
 
 // Recommendations and PDF export (mock for now, or use basic logic)
 app.get('/api/recommendations', requireAuth, async (req, res) => {
-  const schoolId = req.query.schoolId
-  const [rows] = await pool.query('SELECT * FROM eligibility_submissions ORDER BY submittedAt DESC')
+  const isSchoolScopedRole = req.auth?.role === 'school_admin' || req.auth?.role === 'school'
+  const schoolId = isSchoolScopedRole ? req.auth.schoolId : req.query.schoolId
+  const schoolName = isSchoolScopedRole ? req.auth.schoolName : req.query.schoolName
+  let query = 'SELECT * FROM eligibility_submissions ORDER BY submittedAt DESC'
+  let params = []
+
+  if (isSchoolScopedRole) {
+    const parsedSchoolId = Number(schoolId)
+    const normalizedSchoolName = String(schoolName || '').trim()
+    if (!Number.isFinite(parsedSchoolId) && !normalizedSchoolName) return okJson(res, [])
+
+    const whereClauses = []
+    if (Number.isFinite(parsedSchoolId)) {
+      whereClauses.push("JSON_CONTAINS(recommendations, ?, '$')")
+      params.push(JSON.stringify({ schoolId: parsedSchoolId }))
+    }
+    if (normalizedSchoolName) {
+      whereClauses.push("JSON_SEARCH(recommendations, 'one', ?, NULL, '$[*].schoolName') IS NOT NULL")
+      params.push(normalizedSchoolName)
+    }
+
+    query = `SELECT * FROM eligibility_submissions WHERE ${whereClauses.join(' OR ')} ORDER BY submittedAt DESC`
+  }
+
+  const [rows] = await pool.query(query, params)
   const mapped = rows
-    .map((row) => mapSubmissionRow(row, { targetSchoolId: schoolId }))
+    .map((row) => mapSubmissionRow(row, { targetSchoolId: schoolId, targetSchoolName: schoolName }))
     .filter(Boolean)
   okJson(res, mapped)
 })

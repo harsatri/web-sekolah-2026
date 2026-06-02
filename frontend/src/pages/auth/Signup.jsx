@@ -5,7 +5,7 @@ import { useSchools } from '../../contexts/SchoolContext.jsx'
 
 export default function Signup() {
   const { signup, signupSchool } = useAuth()
-  const { schools, registerSchool } = useSchools()
+  const { schools } = useSchools()
   const nav = useNavigate()
   const { search } = useLocation()
   const [name, setName] = useState('')
@@ -22,16 +22,20 @@ export default function Signup() {
   const isSchoolRegistration = new URLSearchParams(search).get('type') === 'school'
   const districts = ['Purwokerto Timur', 'Purwokerto Barat', 'Purwokerto Selatan', 'Purwokerto Utara']
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
+    setError('')
     try {
       if (isSchoolRegistration) {
         const exists = schools.some(
           (school) => school.name.toLowerCase() === schoolName.toLowerCase() && school.district === district,
         )
         if (exists) throw new Error('Sekolah sudah terdaftar di wilayah tersebut')
-        registerSchool({
-          name: schoolName,
+        await signupSchool({
+          accountName: name,
+          email,
+          password,
+          schoolName,
           district,
           address,
           contact,
@@ -39,9 +43,10 @@ export default function Signup() {
           accreditationScore,
           certifiedTeachers,
         })
-        signupSchool({ accountName: name, email, password, schoolName })
+        nav('/school-admin')
+        return
       } else {
-        signup(name, email, password)
+        await signup(name, email, password)
       }
       nav('/')
     } catch (err) {

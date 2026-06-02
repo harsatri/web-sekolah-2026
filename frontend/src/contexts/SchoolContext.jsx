@@ -4,6 +4,15 @@ import { apiJson } from '../utils/api.js'
 
 export const SchoolContext = createContext()
 
+function getStoredAuth() {
+  try {
+    const raw = localStorage.getItem('auth')
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export function SchoolProvider({ children }) {
   const [schools, setSchools] = useState([])
 
@@ -14,7 +23,9 @@ export function SchoolProvider({ children }) {
         const data = await apiJson('/api/schools')
         if (!cancelled) setSchools(Array.isArray(data) ? data : [])
       } catch {
-        if (!cancelled) setSchools(initialSchools)
+        const auth = getStoredAuth()
+        const isSchoolScopedRole = auth?.role === 'school_admin' || auth?.role === 'school'
+        if (!cancelled) setSchools(isSchoolScopedRole ? [] : initialSchools)
       }
     }
     load()
@@ -68,8 +79,19 @@ export function SchoolProvider({ children }) {
     setSchools((prevSchools) => prevSchools.filter((school) => Number(school.id) !== Number(schoolId)))
   }
 
+  const refreshSchools = async () => {
+    try {
+      const data = await apiJson('/api/schools')
+      setSchools(Array.isArray(data) ? data : [])
+    } catch {
+      const auth = getStoredAuth()
+      const isSchoolScopedRole = auth?.role === 'school_admin' || auth?.role === 'school'
+      setSchools(isSchoolScopedRole ? [] : initialSchools)
+    }
+  }
+
   return (
-    <SchoolContext.Provider value={{ schools, updateSchool, registerSchool, deleteSchool }}>
+    <SchoolContext.Provider value={{ schools, updateSchool, registerSchool, deleteSchool, refreshSchools }}>
       {children}
     </SchoolContext.Provider>
   )

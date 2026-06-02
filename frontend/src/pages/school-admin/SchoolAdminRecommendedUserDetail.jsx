@@ -97,8 +97,7 @@ function buildDetailPdf({
   schoolToManage,
   statusBadge,
   checkedDocuments,
-  bestAcademic,
-  bestNonAcademic,
+  bestAchievement,
 }) {
   const input = selectedRecord.input || {}
   const score = normalizeScore(selectedRecord?.scoreV ?? selectedRecord?.result?.score ?? 0)
@@ -149,8 +148,7 @@ function buildDetailPdf({
         <div class="section-title">AKADEMIK</div>
         <div class="section-line"></div>
         <div class="meta">Rata-rata rapor TK    : ${Number(input.raporRataRata || 0).toFixed(2).replace('.', ',')} / 4 (${getRaporCategory(Number(input.raporRataRata || 0)).split(' - ')[0]})</div>
-        <div class="meta">Prestasi akademik     : ${bestAcademic}</div>
-        <div class="meta">Prestasi non-akademik : ${bestNonAcademic}</div>
+        <div class="meta">Prestasi              : ${bestAchievement}</div>
 
         <div class="section-title">DOKUMEN</div>
         <div class="section-line"></div>
@@ -242,8 +240,7 @@ export default function SchoolAdminRecommendedUserDetail() {
   const checkedDocuments = Object.entries(input?.dokumen || {})
     .filter(([, checked]) => Boolean(checked))
     .map(([key]) => DOCUMENT_LABELS[key] || key)
-  const bestAcademic = getBestAchievementLabel(input.prestasiAkademik)
-  const bestNonAcademic = getBestAchievementLabel(input.prestasiNonAkademik)
+  const bestAchievement = getBestAchievementLabel(input.prestasi)
   const recommendations = Array.isArray(selectedRecord.recommendations) ? selectedRecord.recommendations : []
   const breakdownRows = Array.isArray(selectedRecord?.result?.rows) ? selectedRecord.result.rows : []
   const raporValue = Number(input.raporRataRata || 0)
@@ -267,8 +264,7 @@ export default function SchoolAdminRecommendedUserDetail() {
     { label: 'Kategori', value: getRaporCategory(raporValue) },
   ]
   const prestasiRows = [
-    { label: 'Prestasi akademik terbaik', value: bestAcademic },
-    { label: 'Prestasi non-akademik terbaik', value: bestNonAcademic },
+    { label: 'Prestasi terbaik', value: bestAchievement },
   ]
   const dokumenRows = [
     { label: 'Dokumen tersedia', value: checkedDocuments.length ? checkedDocuments.join(', ') : '-' },
@@ -297,8 +293,7 @@ export default function SchoolAdminRecommendedUserDetail() {
             schoolToManage,
             statusBadge: scoreBadge,
             checkedDocuments,
-            bestAcademic,
-            bestNonAcademic,
+            bestAchievement,
           })}
           className="btn-primary"
         >

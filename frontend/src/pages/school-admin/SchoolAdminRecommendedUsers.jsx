@@ -187,8 +187,7 @@ function openBulkPdfPrint({
     const docs = Object.entries(input?.dokumen || {})
       .filter(([, checked]) => Boolean(checked))
       .map(([key]) => DOCUMENT_LABELS[key] || key)
-    const bestAcademic = getBestAchievementLabel(input.prestasiAkademik)
-    const bestNonAcademic = getBestAchievementLabel(input.prestasiNonAkademik)
+    const bestAchievement = getBestAchievementLabel(input.prestasi)
 
     const breakdownHtml = breakdownRows.map((row) => `
       <div class="meta-row">
@@ -228,8 +227,7 @@ function openBulkPdfPrint({
 
         <h3>PRESTASI</h3>
         <div class="rule light"></div>
-        <div class="meta-row">Akademik       : ${bestAcademic}</div>
-        <div class="meta-row">Non-Akademik   : ${bestNonAcademic}</div>
+        <div class="meta-row">Prestasi       : ${bestAchievement}</div>
 
         <h3>DOKUMEN</h3>
         <div class="rule light"></div>
