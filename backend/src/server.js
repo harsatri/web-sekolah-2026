@@ -14,7 +14,13 @@ dotenv.config()
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '15mb' }))
-const upload = multer({ storage: multer.memoryStorage() })
+const upload = multer({
+  storage: multer.memoryStorage(),
+  // ponytail: per-file cap only. Aggregate uploads growth is permanent user
+  // content referenced in DB by URL — not safely deletable without a retention
+  // policy. Add orphan-sweep/object-storage when product decides what's transient.
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB; bounds per-upload disk + memory
+})
 
 const pool = createPoolFromEnv()
 
@@ -183,11 +189,16 @@ function okJson(res, payload) {
 }
 
 app.get('/api/health', async (req, res) => {
+  // Query pool directly (not queryOne) so DB errors surface as 503 instead of
+  // being swallowed and reported as a healthy 200 — a masked DB outage is worse
+  // than a visible one. DB-down here makes the compose healthcheck fail, which
+  // gates nginx depends_on and any external monitor.
   try {
-    const row = await queryOne(pool, 'SELECT 1 as ok')
-    okJson(res, { ok: true, db: Boolean(row?.ok) })
+    const [rows] = await pool.query('SELECT 1 as ok')
+    if (Array.isArray(rows) && rows[0]?.ok) return okJson(res, { ok: true, db: true })
+    res.status(503).json({ ok: false, db: false })
   } catch {
-    res.status(500).json({ ok: false })
+    res.status(503).json({ ok: false, db: false })
   }
 })
 
