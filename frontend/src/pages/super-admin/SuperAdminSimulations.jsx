@@ -1,7 +1,12 @@
 import { useSuperAdminData } from '../../hooks/useSuperAdminData.js'
+import { useAuth } from '../../contexts/AuthContext.jsx'
 
 export default function SuperAdminSimulations() {
-  const { simulationDetails, formatDateTime } = useSuperAdminData()
+  const { user, isHydrated } = useAuth()
+  const { simulationDetails, formatDateTime } = useSuperAdminData({
+    enabled: isHydrated && user?.role === 'super_admin',
+  })
+
 
   return (
     <div className="space-y-6">

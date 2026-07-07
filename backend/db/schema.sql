@@ -35,9 +35,13 @@ CREATE TABLE IF NOT EXISTS schools (
   extracurriculars JSON NOT NULL,
   ratio VARCHAR(32) NOT NULL DEFAULT '1:10',
   gallery JSON NOT NULL,
+  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  verified_at DATETIME NULL,
+  verified_by INT NULL,
   createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
 
 CREATE TABLE IF NOT EXISTS eligibility_submissions (
   id VARCHAR(64) PRIMARY KEY,

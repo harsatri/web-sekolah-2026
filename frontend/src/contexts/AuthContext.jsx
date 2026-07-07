@@ -1,14 +1,27 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { apiJson } from '../utils/api'
+import { apiJson, clearStoredAuth, getStoredAuth, setStoredAuth } from '../utils/api'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('auth')
-    if (saved) setUser(JSON.parse(saved))
+    const syncAuth = () => {
+      const saved = getStoredAuth()
+      setUser(saved)
+      setIsHydrated(true)
+    }
+
+    syncAuth()
+    window.addEventListener('storage', syncAuth)
+    window.addEventListener('auth:changed', syncAuth)
+
+    return () => {
+      window.removeEventListener('storage', syncAuth)
+      window.removeEventListener('auth:changed', syncAuth)
+    }
   }, [])
 
   const login = async (email, password) => {
@@ -16,7 +29,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: { email, password },
     })
-    localStorage.setItem('auth', JSON.stringify(auth))
+    setStoredAuth(auth)
     setUser(auth)
   }
 
@@ -25,7 +38,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: { name, email, password },
     })
-    localStorage.setItem('auth', JSON.stringify(auth))
+    setStoredAuth(auth)
     setUser(auth)
   }
 
@@ -56,16 +69,20 @@ export function AuthProvider({ children }) {
         certifiedTeachers,
       },
     })
-    localStorage.setItem('auth', JSON.stringify(auth))
-    setUser(auth)
+
+    // Untuk registrasi sekolah: jangan login otomatis.
+    // Akun sekolah masih pending (active=0) sehingga tidak boleh memiliki auth session.
+    // Requirement: jangan simpan auth/user/token ke localStorage.
+    setUser(null)
+    clearStoredAuth()
   }
 
   const logout = () => {
-    localStorage.removeItem('auth')
+    clearStoredAuth()
     setUser(null)
   }
 
-  const value = useMemo(() => ({ user, login, signup, signupSchool, logout }), [user])
+  const value = useMemo(() => ({ user, isHydrated, login, signup, signupSchool, logout }), [user, isHydrated])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

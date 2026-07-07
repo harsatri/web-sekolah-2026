@@ -1,8 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useSuperAdminData } from '../../hooks/useSuperAdminData.js'
+import { useAuth } from '../../contexts/AuthContext.jsx'
 
 export default function SuperAdminActivityLogs() {
-  const { activityLogs, formatDateTime } = useSuperAdminData()
+  const { user, isHydrated } = useAuth()
+  const { activityLogs, formatDateTime } = useSuperAdminData({
+    enabled: isHydrated && user?.role === 'super_admin',
+  })
+
   const [filterType, setFilterType] = useState('all')
 
   const filteredLogs = useMemo(() => {

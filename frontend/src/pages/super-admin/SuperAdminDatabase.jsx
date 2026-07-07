@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { resetDatabase } from '../../utils/resetDatabase'
+import { useAuth } from '../../contexts/AuthContext.jsx'
+
 
 export default function SuperAdminDatabase() {
   const [isBusy, setIsBusy] = useState(false)
   const navigate = useNavigate()
+  const { logout } = useAuth()
+
 
   const summaryItems = useMemo(() => ([
     { key: 'users', label: 'Users', desc: 'Akun super admin, admin sekolah, dan user' },
@@ -32,6 +36,7 @@ export default function SuperAdminDatabase() {
     try {
       setIsBusy(true)
       resetDatabase({ mode: 'clearAll' })
+      logout()
       navigate('/login?role=admin', { replace: true })
     } finally {
       setIsBusy(false)

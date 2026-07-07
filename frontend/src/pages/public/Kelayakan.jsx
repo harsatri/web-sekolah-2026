@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useSchools } from '../../contexts/SchoolContext.jsx'
@@ -524,11 +524,11 @@ function StepDomisili({ formData, setFormData, onNext, onBack }) {
           </div>
         )}
         <div className="flex items-center justify-between gap-3">
-          <button type="button" onClick={onBack} aria-label="Kembali" className="btn-nav-icon">
-            &lt;
+          <button type="button" onClick={onBack} aria-label="Kembali" className="h-12 min-w-[120px] rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            Kembali
           </button>
-          <button type="button" onClick={handleNext} aria-label="Lanjut" className="btn-nav-icon">
-            &gt;
+          <button type="button" onClick={handleNext} aria-label="Lanjut" className="h-12 min-w-[120px] rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white hover:bg-sky-700">
+            Lanjut
           </button>
         </div>
       </div>
@@ -656,11 +656,11 @@ function StepRaporTK({ formData, setFormData, onNext, onBack }) {
       )}
 
       <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <button type="button" onClick={onBack} aria-label="Kembali" className="btn-nav-icon">
-          &lt;
+        <button type="button" onClick={onBack} aria-label="Kembali" className="h-12 min-w-[120px] rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+          Kembali
         </button>
-        <button type="button" onClick={handleNextStep} aria-label="Lanjut" className="btn-nav-icon">
-          &gt;
+        <button type="button" onClick={handleNextStep} aria-label="Lanjut" className="h-12 min-w-[120px] rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white transition hover:bg-sky-700">
+          Lanjut
         </button>
       </div>
     </div>
@@ -691,7 +691,7 @@ function StepPrestasiAnak({ formData, setFormData, onNext, onBack }) {
     <div className="space-y-5">
       <div>
         <div className="text-xl font-bold text-slate-900">Langkah 4 - Prestasi anak</div>
-        <div className="text-sm text-slate-600">Isi jika ada prestasi (akademik atau non-akademik). Bukti tidak perlu diunggah, cukup ditandai di langkah berikutnya.</div>
+        <div className="text-sm text-slate-600">Pilih prestasi tertinggi yang pernah diraih oleh calon siswa, baik akademik maupun non-akademik. Bukti prestasi tidak perlu diunggah, cukup ditandai pada langkah kelengkapan dokumen berikutnya.</div>
       </div>
 
       <div className="relative">
@@ -732,11 +732,11 @@ function StepPrestasiAnak({ formData, setFormData, onNext, onBack }) {
       </div>
 
       <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <button type="button" onClick={onBack} aria-label="Kembali" className="btn-nav-icon">
-          &lt;
+        <button type="button" onClick={onBack} aria-label="Kembali" className="h-12 min-w-[120px] rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+          Kembali
         </button>
-        <button type="button" onClick={onNext} aria-label="Lanjut" className="btn-nav-icon">
-          &gt;
+        <button type="button" onClick={onNext} aria-label="Lanjut" className="h-12 min-w-[120px] rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white transition hover:bg-sky-700">
+          Lanjut
         </button>
       </div>
     </div>
@@ -909,11 +909,11 @@ function StepDokumenEkonomi({ formData, setFormData, onNext, onBack }) {
       )}
 
       <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-        <button type="button" onClick={onBack} aria-label="Kembali" className="btn-nav-icon">
-          &lt;
+        <button type="button" onClick={onBack} aria-label="Kembali" className="h-12 min-w-[120px] rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+          Kembali
         </button>
-        <button type="button" onClick={handleNext} aria-label="Lanjut" className="btn-nav-icon">
-          &gt;
+        <button type="button" onClick={handleNext} aria-label="Lanjut" className="h-12 min-w-[120px] rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white transition hover:bg-sky-700">
+          Lanjut
         </button>
       </div>
     </div>
@@ -925,6 +925,7 @@ export default function Kelayakan() {
   const { schools } = useSchools()
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
+  const formStepTopRef = useRef(null)
   const [name, setName] = useState('')
   const [gender, setGender] = useState('')
   const [birthDate, setBirthDate] = useState('')
@@ -1362,6 +1363,13 @@ export default function Kelayakan() {
     { id: 6, label: 'Ringkasan' },
   ]
 
+  useEffect(() => {
+    formStepTopRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }, [currentStep])
+
   const goNext = () => setCurrentStep((prev) => Math.min(prev + 1, 6))
   const goPrev = () => setCurrentStep((prev) => Math.max(prev - 1, 1))
 
@@ -1440,8 +1448,10 @@ export default function Kelayakan() {
   return (
     <main className="min-h-screen w-full bg-slate-50 px-4 py-8 sm:px-6 lg:px-10">
       <div className="mb-6 w-full">
-        <Link className="btn-nav-icon shadow-sm" to="/" aria-label="Kembali">
-          &lt;
+        <Link type="button"
+          onClick={() => navigate(-1)}
+          className="h-12 min-w-[120px] rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+          Kembali
         </Link>
       </div>
       <div className="flex w-full flex-col ">
@@ -1450,7 +1460,7 @@ export default function Kelayakan() {
           Lengkapi form secara bertahap. Semua data dipakai untuk simulasi rekomendasi sekolah yang lebih akurat.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
+        <div className="mt-6 rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6" ref={formStepTopRef}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
             {stepItems.map((step, index) => {
               const done = currentStep > step.id
@@ -1635,16 +1645,16 @@ export default function Kelayakan() {
                       type="button"
                       onClick={goPrev}
                       aria-label="Kembali"
-                      className="btn-nav-icon"
+                      className="h-12 min-w-[120px] rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
-                      &lt;
+                      Kembali
                     </button>
                     <div className="text-sm font-semibold text-slate-500">Langkah {currentStep} dari 6</div>
                     <button
                       type="submit"
-                      className="btn-primary rounded-xl px-4 py-2"
+                       className="h-12 min-w-[140px] rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white transition hover:bg-sky-700"
                     >
-                      Hitung Kelayakan →
+                      Hitung Kelayakan
                     </button>
                   </div>
                 </div>
@@ -1738,20 +1748,23 @@ export default function Kelayakan() {
               type="button"
               onClick={goPrev}
               aria-label="Kembali"
-              className={`btn-nav-icon ${currentStep === 1 ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400' : ''}`}
-              disabled={currentStep === 1}
+              className={`h-12 min-w-[120px] rounded-xl border px-6 text-sm font-semibold transition ${
+                currentStep === 1
+                  ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
             >
-              &lt;
+              Kembali
             </button>
             <div className="text-sm font-semibold text-slate-500">Langkah {currentStep} dari 6</div>
             {currentStep < 6 ? (
-              <button type="button" onClick={handleGoNext} aria-label="Lanjut" className="btn-nav-icon">
-                &gt;
+              <button type="button" onClick={handleGoNext} aria-label="Lanjut" className="h-12 min-w-[120px] rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white transition hover:bg-sky-700">
+                Lanjut
               </button>
             ) : (
               <button
                   type="submit"
-                  className="btn-primary rounded-xl px-5 py-2">
+                   className="h-12 min-w-[140px] rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white transition hover:bg-sky-700">
                   Hitung Kelayakan
               </button>
             )}

@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useSuperAdminData } from '../../hooks/useSuperAdminData.js'
 import { apiJson } from '../../utils/api.js'
+import { useAuth } from '../../contexts/AuthContext.jsx'
+
 
 const criteriaCodeToName = {
   C1: 'Usia',
@@ -13,7 +15,11 @@ const criteriaCodeToName = {
 }
 
 export default function SuperAdminCriteriaRequests() {
-  const { criteriaRequests, formatDateTime } = useSuperAdminData()
+  const { user, isHydrated } = useAuth()
+  const { criteriaRequests, formatDateTime } = useSuperAdminData({
+    enabled: isHydrated && user?.role === 'super_admin',
+  })
+
   const [requestRows, setRequestRows] = useState([])
   const [filterStatus, setFilterStatus] = useState('all')
   const [selectedRequest, setSelectedRequest] = useState(null)

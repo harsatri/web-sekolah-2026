@@ -19,6 +19,7 @@ export default function Signup() {
   const [accreditationScore, setAccreditationScore] = useState('80')
   const [certifiedTeachers, setCertifiedTeachers] = useState('12')
   const [error, setError] = useState('')
+  const [schoolDuplicateWarning, setSchoolDuplicateWarning] = useState('')
   const isSchoolRegistration = new URLSearchParams(search).get('type') === 'school'
   const districts = ['Purwokerto Timur', 'Purwokerto Barat', 'Purwokerto Selatan', 'Purwokerto Utara']
 
@@ -30,7 +31,16 @@ export default function Signup() {
         const exists = schools.some(
           (school) => school.name.toLowerCase() === schoolName.toLowerCase() && school.district === district,
         )
-        if (exists) throw new Error('Sekolah sudah terdaftar di wilayah tersebut')
+        if (exists) {
+          setSchoolDuplicateWarning(
+            '⚠️ Sekolah dengan nama dan kecamatan yang sama sudah terdaftar.\nSilakan hubungi administrator jika terjadi kesalahan.',
+          )
+          return
+        }
+
+        // reset warning setiap submit
+        setSchoolDuplicateWarning('')
+
         await signupSchool({
           accountName: name,
           email,
@@ -43,14 +53,32 @@ export default function Signup() {
           accreditationScore,
           certifiedTeachers,
         })
-        nav('/school-admin')
+
+        // Tidak langsung login/redirect ke School Admin karena akun masih pending.
+        const pendingSchoolMessage =
+          'Pendaftaran berhasil. Akun sekolah Anda masih menunggu verifikasi Super Admin. Silakan menunggu proses persetujuan sebelum mengakses dashboard.'
+        setError('')
+        nav('/login', { state: { pendingSchoolMessage } })
         return
       } else {
         await signup(name, email, password)
       }
       nav('/')
+
     } catch (err) {
-      setError(err.message || 'Gagal daftar')
+      // Backend duplikasi sekolah: HTTP 409
+      // Karena apiJson melempar Error(message) saat res.ok=false,
+      // kita gunakan pesan yang ada untuk mendeteksi duplikasi.
+      const msg = err?.message || ''
+      if (isSchoolRegistration && msg.toLowerCase().includes('sekola') && msg.toLowerCase().includes('sudah terdaftar')) {
+        setSchoolDuplicateWarning(
+          '⚠️ Sekolah dengan nama dan kecamatan yang sama sudah terdaftar.\nSilakan hubungi administrator jika terjadi kesalahan.',
+        )
+        setError('')
+        return
+      }
+
+      setError(msg || 'Gagal daftar')
     }
   }
 
@@ -63,6 +91,12 @@ export default function Signup() {
       </div>
       <h1 className="text-3xl font-bold">{isSchoolRegistration ? 'Registrasi Sekolah' : 'Sign up'}</h1>
       {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {isSchoolRegistration && schoolDuplicateWarning && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 whitespace-pre-line">
+          {schoolDuplicateWarning}
+        </div>
+      )}
+
       <div className="mt-4 flex items-center gap-2 text-sm">
         <Link
           className={`rounded-full border px-4 py-2 ${!isSchoolRegistration ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 text-slate-700'}`}

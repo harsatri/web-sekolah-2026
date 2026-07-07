@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { schools as initialSchools } from './schools.js'
 import { apiJson } from '../utils/api.js'
+
 
 export const SchoolContext = createContext()
 
@@ -15,17 +15,30 @@ function getStoredAuth() {
 
 export function SchoolProvider({ children }) {
   const [schools, setSchools] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  useEffect(() => {
+
+useEffect(() => {
     let cancelled = false
     const load = async () => {
+      setLoading(true)
+      setError(null)
       try {
         const data = await apiJson('/api/schools')
-        if (!cancelled) setSchools(Array.isArray(data) ? data : [])
-      } catch {
-        const auth = getStoredAuth()
-        const isSchoolScopedRole = auth?.role === 'school_admin' || auth?.role === 'school'
-        if (!cancelled) setSchools(isSchoolScopedRole ? [] : initialSchools)
+        if (!cancelled) {
+          const approved = (Array.isArray(data) ? data : []).filter((school) => school?.status === 'approved')
+          setSchools(approved)
+          setError(null)
+          setLoading(false)
+        }
+      } catch (e) {
+        console.error('LOAD SCHOOLS ERROR', e)
+        if (!cancelled) {
+          setSchools([])
+          setError('Data sekolah tidak dapat dimuat. Silakan coba kembali.')
+          setLoading(false)
+        }
       }
     }
     load()
@@ -33,6 +46,7 @@ export function SchoolProvider({ children }) {
       cancelled = true
     }
   }, [])
+
 
   const updateSchool = async (updatedSchool) => {
     const saved = await apiJson(`/api/schools/${updatedSchool.id}`, {
@@ -81,17 +95,23 @@ export function SchoolProvider({ children }) {
 
   const refreshSchools = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const data = await apiJson('/api/schools')
-      setSchools(Array.isArray(data) ? data : [])
-    } catch {
-      const auth = getStoredAuth()
-      const isSchoolScopedRole = auth?.role === 'school_admin' || auth?.role === 'school'
-      setSchools(isSchoolScopedRole ? [] : initialSchools)
+      const approved = (Array.isArray(data) ? data : []).filter((school) => school?.status === 'approved')
+      setSchools(approved)
+      setLoading(false)
+    } catch (e) {
+      console.error('REFRESH SCHOOLS ERROR', e)
+      setSchools([])
+      setError('Data sekolah tidak dapat dimuat. Silakan coba kembali.')
+      setLoading(false)
     }
   }
 
   return (
-    <SchoolContext.Provider value={{ schools, updateSchool, registerSchool, deleteSchool, refreshSchools }}>
+    <SchoolContext.Provider value={{ schools, loading, error, updateSchool, registerSchool, deleteSchool, refreshSchools }}>
+
       {children}
     </SchoolContext.Provider>
   )

@@ -5,7 +5,8 @@ import { useAuth } from '../../contexts/AuthContext.jsx'
 export default function Login() {
   const { login, logout } = useAuth()
   const nav = useNavigate()
-  const { search } = useLocation()
+  const location = useLocation()
+  const { search } = location
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -82,6 +83,21 @@ export default function Login() {
         </Link>
       </div>
       <h1 className="text-3xl font-bold">Login</h1>
+      {(() => {
+        const pendingMsg = location?.state?.pendingSchoolMessage
+        const pendingFlag = location?.state?.pendingSchool
+        const message =
+          pendingMsg ||
+          (pendingFlag
+            ? 'Akun sekolah Anda masih menunggu verifikasi Super Admin. Silakan menunggu proses persetujuan sebelum mengakses dashboard.'
+            : null)
+
+        return message ? (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 whitespace-pre-line">
+            {message}
+          </div>
+        ) : null
+      })()}
       {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       <form onSubmit={onSubmit} autoComplete="off" className="mt-6 space-y-4">
         <div>

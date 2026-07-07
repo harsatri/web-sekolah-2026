@@ -25,6 +25,8 @@ import SchoolDetail from './pages/public/SchoolDetail.jsx'
 import SuperAdminCriteriaRequests from './pages/super-admin/SuperAdminCriteriaRequests.jsx'
 import SuperAdminActivityLogs from './pages/super-admin/SuperAdminActivityLogs.jsx'
 import SuperAdminSchools from './pages/super-admin/SuperAdminSchools.jsx'
+import SchoolVerification from './pages/super-admin/SchoolVerification.jsx'
+
 
 export default function App() {
   return (
@@ -45,7 +47,9 @@ export default function App() {
                 <Route path="simulasi" element={<SuperAdminSimulations />} />
                 <Route path="master-sekolah" element={<SuperAdminSchools />} />
                 <Route path="pengajuan-kriteria" element={<SuperAdminCriteriaRequests />} />
+                <Route path="school-verification" element={<SchoolVerification />} />
                 <Route path="admin-sekolah" element={<SuperAdminAdmins />} />
+
                 <Route path="pengguna" element={<SuperAdminUsers />} />
                 <Route path="log-aktivitas" element={<SuperAdminActivityLogs />} />
                 <Route path="database" element={<SuperAdminDatabase />} />

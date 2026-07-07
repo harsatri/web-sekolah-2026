@@ -10,11 +10,13 @@ export default function TopSchools() {
 
   const districts = useMemo(() => ['Semua', 'Purwokerto Timur', 'Purwokerto Barat', 'Purwokerto Selatan', 'Purwokerto Utara'], [])
   const filtered = useMemo(() => {
-    return schools.filter((s) => {
-      const matchDistrict = district === 'Semua' || s.district === district
-      const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase())
-      return matchDistrict && matchSearch
-    })
+    return schools
+      .filter((s) => s?.status === 'approved')
+      .filter((s) => {
+        const matchDistrict = district === 'Semua' || s.district === district
+        const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase())
+        return matchDistrict && matchSearch
+      })
   }, [schools, district, search])
 
   const getFullUrl = (url) => {

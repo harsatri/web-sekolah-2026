@@ -3,17 +3,19 @@ import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 
 export default function SuperAdminLayout() {
-  const { user } = useAuth()
+  const { user, isHydrated } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (!isHydrated) return
     if (!user) {
       navigate('/login', { replace: true })
       return
     }
     if (user.role !== 'super_admin') navigate('/', { replace: true })
-  }, [user, navigate])
+  }, [isHydrated, user, navigate])
 
+  if (!isHydrated) return null
   if (!user || user.role !== 'super_admin') return null
 
   return (

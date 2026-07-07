@@ -4,6 +4,7 @@ import { apiJson } from '../../utils/api.js'
 
 export default function SuperAdminSchools() {
   const { schools, refreshSchools } = useSchools()
+  const approvedSchools = schools.filter((school) => school.status === 'approved')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSchool, setEditingSchool] = useState(null)
   const [formData, setFormData] = useState({
@@ -101,7 +102,7 @@ export default function SuperAdminSchools() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {schools.map((school) => (
+              {approvedSchools.map((school) => (
                 <tr key={school.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 font-bold text-slate-900">{school.name}</td>
                   <td className="px-6 py-4 text-slate-600">{school.district}</td>

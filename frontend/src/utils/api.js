@@ -1,31 +1,35 @@
 export const API_BASE_URL = ''
+const AUTH_STORAGE_KEY = 'auth'
+const AUTH_CHANGED_EVENT = 'auth:changed'
 
-function getStoredAuth() {
+export function getStoredAuth() {
   try {
-    const raw = localStorage.getItem('auth')
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-export async function apiJson(path, { method = 'GET', body, headers } = {}) {
+export function clearStoredAuth() {
+  localStorage.removeItem(AUTH_STORAGE_KEY)
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
+}
+
+export function setStoredAuth(auth) {
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth))
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
+}
+
+export function getAuthHeaders(headers = {}) {
   const auth = getStoredAuth()
-  const mergedHeaders = {
-    ...(body != null ? { 'Content-Type': 'application/json' } : {}),
-    ...(auth?.email ? { 'x-auth-email': auth.email } : {}),
-    ...(auth?.role ? { 'x-auth-role': auth.role } : {}),
-    ...(auth?.schoolId != null ? { 'x-auth-school-id': String(auth.schoolId) } : {}),
-    ...(auth?.schoolName ? { 'x-auth-school-name': auth.schoolName } : {}),
+  return {
+    ...(auth?.token ? { Authorization: `Bearer ${auth.token}` } : {}),
     ...(headers || {}),
   }
+}
 
-  const res = await fetch(path, {
-    method,
-    headers: mergedHeaders,
-    body: body != null ? JSON.stringify(body) : undefined,
-  })
-
+async function parseResponse(res) {
   const text = await res.text()
   let data = null
   if (text) {
@@ -36,9 +40,37 @@ export async function apiJson(path, { method = 'GET', body, headers } = {}) {
       throw new Error(`Respons server bukan JSON. ${snippet || 'Tidak ada detail.'}`)
     }
   }
+
   if (!res.ok) {
+    if (res.status === 401) clearStoredAuth()
     const message = data?.message || 'Permintaan gagal'
     throw new Error(message)
   }
+
   return data
+}
+
+export async function apiJson(path, { method = 'GET', body, headers } = {}) {
+  const mergedHeaders = {
+    ...(body != null ? { 'Content-Type': 'application/json' } : {}),
+    ...getAuthHeaders(headers),
+  }
+
+  const res = await fetch(path, {
+    method,
+    headers: mergedHeaders,
+    body: body != null ? JSON.stringify(body) : undefined,
+  })
+
+  return parseResponse(res)
+}
+
+export async function apiForm(path, { method = 'POST', body, headers } = {}) {
+  const res = await fetch(path, {
+    method,
+    headers: getAuthHeaders(headers),
+    body,
+  })
+
+  return parseResponse(res)
 }

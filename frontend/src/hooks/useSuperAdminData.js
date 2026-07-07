@@ -10,7 +10,8 @@ function parseDateSafe(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-export function useSuperAdminData() {
+export function useSuperAdminData(options = {}) {
+  const { enabled = true } = options
   const { schools } = useSchools()
   const [allUsers, setAllUsers] = useState([])
   const [simulationLogs, setSimulationLogs] = useState([])
@@ -18,6 +19,14 @@ export function useSuperAdminData() {
   const [criteriaRequests, setCriteriaRequests] = useState([])
 
   useEffect(() => {
+    if (!enabled) {
+      setAllUsers([])
+      setSimulationLogs([])
+      setActivityLogs([])
+      setCriteriaRequests([])
+      return undefined
+    }
+
     let cancelled = false
     const refreshData = async () => {
       try {
@@ -46,7 +55,7 @@ export function useSuperAdminData() {
       window.removeEventListener('focus', refreshData)
       cancelled = true
     }
-  }, [])
+  }, [enabled])
 
   const adminUsers = useMemo(() => allUsers.filter((item) => item.role === 'school_admin'), [allUsers])
   const regularUsers = useMemo(() => allUsers.filter((item) => item.role === 'user'), [allUsers])
@@ -59,8 +68,14 @@ export function useSuperAdminData() {
       const date = parseDateSafe(s.submittedAt)
       return date ? date > lastWeek : false
     }).length
-    const usersLastWeek = regularUsers.filter(u => new Date(u.createdAt) > lastWeek).length
-    const adminsLastWeek = adminUsers.filter(a => new Date(a.createdAt) > lastWeek).length
+    const usersLastWeek = regularUsers.filter((u) => {
+      const date = parseDateSafe(u.createdAt)
+      return date ? date > lastWeek : false
+    }).length
+    const adminsLastWeek = adminUsers.filter((a) => {
+      const date = parseDateSafe(a.createdAt)
+      return date ? date > lastWeek : false
+    }).length
 
     return {
       totalUsers: regularUsers.length,
@@ -135,12 +150,111 @@ export function useSuperAdminData() {
     })
   }
 
-  const persistUsers = async (nextUsers) => {
-    await apiJson('/api/users/bulk', { method: 'PUT', body: nextUsers })
-    setAllUsers(nextUsers)
+  const getStatusLabel = (item) => (item.active === false ? 'Nonaktif' : 'Aktif')
+
+  const createUser = async ({ name, email, password }) => {
+    const payload = {
+      name,
+      email,
+      password,
+      role: 'user',
+      active: true,
+    }
+
+    const created = await apiJson('/api/users', {
+      method: 'POST',
+      body: payload,
+    })
+
+    const users = await apiJson('/api/users')
+    setAllUsers(Array.isArray(users) ? users : [])
+    return created
   }
 
-  const getStatusLabel = (item) => (item.active === false ? 'Nonaktif' : 'Aktif')
+  const updateUser = async (id, payload) => {
+    const result = await apiJson(`/api/users/${id}`, {
+      method: 'PUT',
+      body: { ...payload },
+    })
+
+    const users = await apiJson('/api/users')
+    setAllUsers(Array.isArray(users) ? users : [])
+    return result
+  }
+
+  const toggleUserActive = async (id) => {
+    const result = await apiJson(`/api/users/${id}/toggle`, { method: 'PATCH', body: {} })
+
+    const users = await apiJson('/api/users')
+    setAllUsers(Array.isArray(users) ? users : [])
+    return result
+  }
+
+  const deleteUser = async (id) => {
+    const result = await apiJson(`/api/users/${id}`, { method: 'DELETE' })
+
+    const users = await apiJson('/api/users')
+    setAllUsers(Array.isArray(users) ? users : [])
+    return result
+  }
+
+  const createSchoolAdmin = async ({ name, email, password, schoolId, schoolName }) => {
+    const payload = {
+      name,
+      email,
+      password,
+      role: 'school_admin',
+      active: true,
+      schoolId: schoolId != null ? Number(schoolId) : null,
+      schoolName: String(schoolName || ''),
+    }
+
+    console.log('CREATE USER REQUEST', payload)
+
+    let created
+    try {
+      created = await apiJson('/api/users', {
+        method: 'POST',
+        body: { ...payload },
+      })
+      console.log('CREATE USER SUCCESS', created)
+    } catch (err) {
+      console.error('CREATE USER ERROR', err)
+      throw err
+    }
+    // refresh state
+    const users = await apiJson('/api/users')
+    setAllUsers(Array.isArray(users) ? users : [])
+    return created
+  }
+
+  const updateSchoolAdmin = async (id, payload) => {
+    try {
+      console.log('UPDATE USER REQUEST', id, payload)
+
+      const result = await apiJson(`/api/users/${id}`, {
+        method: 'PUT',
+        body: { ...payload },
+      })
+
+      console.log('UPDATE USER SUCCESS', result)
+
+      const users = await apiJson('/api/users')
+      setAllUsers(Array.isArray(users) ? users : [])
+    } catch (err) {
+      console.error('UPDATE USER ERROR', err)
+      throw err
+    }
+  }
+
+  const toggleSchoolAdminActive = async (id) => {
+    await apiJson(`/api/users/${id}/toggle`, { method: 'PATCH', body: {} })
+    const users = await apiJson('/api/users')
+    setAllUsers(Array.isArray(users) ? users : [])
+  }
+
+  // NOTE: deleteUser untuk backward compatibility dihapus karena sudah didefinisikan di atas
+
 
   return {
     allUsers,
@@ -151,7 +265,15 @@ export function useSuperAdminData() {
     monthlyUsage,
     stats,
     formatDateTime,
-    persistUsers,
+    // CRUD super admin (users regular)
+    createUser,
+    updateUser,
+    toggleUserActive,
+    deleteUser: deleteUser,
+    // Backward compatibility (existing exports)
+    createSchoolAdmin,
+    updateSchoolAdmin,
+    toggleSchoolAdminActive,
     getStatusLabel,
     criteriaRequests,
     pendingRequests,

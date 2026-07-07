@@ -1,12 +1,27 @@
 import { useMemo, useState } from 'react'
 import { useSuperAdminData } from '../../hooks/useSuperAdminData.js'
+import { useAuth } from '../../contexts/AuthContext.jsx'
 
 export default function SuperAdminUsers() {
-  const { allUsers, regularUsers, persistUsers, getStatusLabel, formatDateTime } = useSuperAdminData()
+  const { user, isHydrated } = useAuth()
+  const {
+
+    allUsers = [],
+    regularUsers = [],
+    createUser,
+    updateUser,
+    toggleUserActive,
+    deleteUser,
+    getStatusLabel,
+    formatDateTime,
+  } = useSuperAdminData({
+    enabled: isHydrated && user?.role === 'super_admin',
+  })
+
   const [search, setSearch] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', email: '', password: '' })
-  const [editEmail, setEditEmail] = useState('')
+  const [editId, setEditId] = useState(null)
   const [editForm, setEditForm] = useState({ name: '', email: '' })
 
   const filteredUsers = useMemo(() => {
@@ -16,48 +31,44 @@ export default function SuperAdminUsers() {
     )
   }, [regularUsers, search])
 
-  const onToggle = (email) => {
-    const nextUsers = allUsers.map((item) =>
-      item.email === email ? { ...item, active: item.active === false } : item,
-    )
-    persistUsers(nextUsers)
+  const onToggle = async (id) => {
+    if (id == null) return
+    await toggleUserActive(id)
   }
 
-  const onDelete = (email) => {
-    const nextUsers = allUsers.filter((item) => item.email !== email)
-    persistUsers(nextUsers)
-    if (editEmail === email) {
-      setEditEmail('')
+  const onDelete = async (id) => {
+    if (id == null) return
+
+    if (!window.confirm('Apakah Anda yakin ingin menghapus pengguna ini?')) {
+      return
+    }
+
+    await deleteUser(id)
+    if (editId === id) {
+      setEditId(null)
       setEditForm({ name: '', email: '' })
     }
   }
 
   const onShowEdit = (item) => {
-    setEditEmail(item.email)
+    setEditId(item.id)
     setEditForm({ name: item.name || '', email: item.email })
   }
 
-  const onSaveEdit = () => {
+  const onSaveEdit = async () => {
+    if (editId == null) return
     if (!editForm.name || !editForm.email) return
-    const nextUsers = allUsers.map((item) => {
-      if (item.email !== editEmail) return item
-      return { ...item, name: editForm.name, email: editForm.email }
-    })
-    persistUsers(nextUsers)
-    setEditEmail('')
+    await updateUser(editId, { name: editForm.name, email: editForm.email })
+    setEditId(null)
     setEditForm({ name: '', email: '' })
   }
 
-  const onCreate = (e) => {
+  const onCreate = async (e) => {
     e.preventDefault()
     if (!addForm.name || !addForm.email || !addForm.password) return
     const exists = allUsers.some((item) => item.email === addForm.email)
     if (exists) return
-    const nextUsers = [
-      ...allUsers,
-      { name: addForm.name, email: addForm.email, password: addForm.password, role: 'user', active: true },
-    ]
-    persistUsers(nextUsers)
+    await createUser({ name: addForm.name, email: addForm.email, password: addForm.password })
     setAddForm({ name: '', email: '', password: '' })
     setShowAddForm(false)
   }
@@ -98,12 +109,21 @@ export default function SuperAdminUsers() {
           </form>
         )}
 
-        {editEmail && (
+        {editId != null && (
           <div className="mt-4 grid gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 md:grid-cols-3">
             <input value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nama pengguna" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
             <input value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="Email pengguna" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
             <div className="flex items-center justify-end gap-2">
-              <button type="button" onClick={() => { setEditEmail(''); setEditForm({ name: '', email: '' }) }} className="rounded-lg bg-slate-300 px-3 py-2 text-xs font-semibold text-slate-800">Batal</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditId(null)
+                  setEditForm({ name: '', email: '' })
+                }}
+                className="rounded-lg bg-slate-300 px-3 py-2 text-xs font-semibold text-slate-800"
+              >
+                Batal
+              </button>
               <button type="button" onClick={onSaveEdit} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700">Update</button>
             </div>
           </div>
@@ -134,8 +154,12 @@ export default function SuperAdminUsers() {
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => onShowEdit(item)} className="rounded-md bg-amber-500 px-2 py-1 text-xs font-semibold text-white">Edit</button>
-                      <button type="button" onClick={() => onDelete(item.email)} className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white">Hapus</button>
-                      <button type="button" onClick={() => onToggle(item.email)} className={`rounded-md px-2 py-1 text-xs font-semibold text-white ${getStatusLabel(item) === 'Aktif' ? 'bg-slate-600' : 'bg-emerald-600'}`}>
+                      <button type="button" onClick={() => onDelete(item.id)} className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white">Hapus</button>
+                      <button
+                        type="button"
+                        onClick={() => onToggle(item.id)}
+                        className={`rounded-md px-2 py-1 text-xs font-semibold text-white ${getStatusLabel(item) === 'Aktif' ? 'bg-slate-600' : 'bg-emerald-600'}`}
+                      >
                         {getStatusLabel(item) === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan'}
                       </button>
                     </div>

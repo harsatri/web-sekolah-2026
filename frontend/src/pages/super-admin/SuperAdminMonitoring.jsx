@@ -1,7 +1,12 @@
 import { useSuperAdminData } from '../../hooks/useSuperAdminData.js'
+import { useAuth } from '../../contexts/AuthContext.jsx'
 
 export default function SuperAdminMonitoring() {
-  const { criteriaNotifications, formatDateTime } = useSuperAdminData()
+  const { user, isHydrated } = useAuth()
+  const { criteriaNotifications, formatDateTime } = useSuperAdminData({
+    enabled: isHydrated && user?.role === 'super_admin',
+  })
+
 
   return (
     <div className="space-y-6">

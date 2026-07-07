@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSchoolAdminData } from '../../hooks/useSchoolAdminData.js'
-import { apiJson } from '../../utils/api.js'
+import { apiForm, apiJson } from '../../utils/api.js'
 
 const activeCriteria = [
   { code: 'C1', name: 'Usia', weight: '40%', note: 'Prioritas usia >= 7 tahun per 1 Juli 2026' },
@@ -108,7 +108,6 @@ export default function SchoolAdminCriteria() {
     setErrors({})
 
     try {
-      const auth = JSON.parse(localStorage.getItem('auth') || '{}')
       const formData = new FormData()
       formData.append('schoolId', schoolToManage?.id)
       formData.append('schoolName', schoolToManage?.name)
@@ -120,27 +119,10 @@ export default function SchoolAdminCriteria() {
         formData.append('supportingDocument', formValues.supportingDocument)
       }
 
-      const response = await fetch('/api/criteria-requests', {
+      await apiForm('/api/criteria-requests', {
         method: 'POST',
-        headers: {
-          'x-auth-email': auth.email || '',
-          'x-auth-role': auth.role || '',
-          'x-auth-school-id': auth.schoolId != null ? String(auth.schoolId) : '',
-          'x-auth-school-name': auth.schoolName || '',
-        },
         body: formData,
       })
-
-      if (!response.ok) {
-        const responseText = await response.text()
-        let errData = {}
-        try {
-          errData = responseText ? JSON.parse(responseText) : {}
-        } catch {
-          errData = { message: responseText || 'Gagal mengirim pengajuan' }
-        }
-        throw new Error(errData.message || 'Gagal mengirim pengajuan')
-      }
 
       setSuccessMessage(true)
       setIsFormOpen(false)

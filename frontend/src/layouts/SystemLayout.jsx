@@ -4,19 +4,22 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { useSuperAdminData } from '../hooks/useSuperAdminData.js'
 
 export default function SystemLayout() {
-  const { user, logout } = useAuth()
-  const { pendingRequests } = useSuperAdminData()
+  const { user, logout, isHydrated } = useAuth()
+  const isSuperAdmin = isHydrated && user?.role === 'super_admin'
+  const { pendingRequests } = useSuperAdminData({ enabled: isSuperAdmin })
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (!isHydrated) return
     if (!user) navigate('/login', { replace: true })
-  }, [user, navigate])
+  }, [isHydrated, user, navigate])
 
   const onLogout = () => {
     logout()
     navigate('/', { replace: true })
   }
 
+  if (!isHydrated) return <div className="min-h-screen bg-slate-100" />
   if (!user) return null
 
   const navClassName = ({ isActive }) =>
@@ -39,6 +42,7 @@ export default function SystemLayout() {
                 
                 <div className="px-3 pt-4 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400">Pengaturan inti</div>
                 <NavLink className={navClassName} to="/super-admin/master-sekolah">Master sekolah</NavLink>
+                <NavLink className={navClassName} to="/super-admin/school-verification">Verifikasi Sekolah</NavLink>
                 <NavLink className={navClassName} to="/super-admin/pengajuan-kriteria">
                    Pengajuan kriteria 
                    {pendingRequests.length > 0 && (
@@ -47,6 +51,7 @@ export default function SystemLayout() {
                      </span>
                    )}
                  </NavLink>
+
 
                 <div className="px-3 pt-4 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400">Akun & audit</div>
                 <NavLink className={navClassName} to="/super-admin/admin-sekolah">Admin sekolah</NavLink>

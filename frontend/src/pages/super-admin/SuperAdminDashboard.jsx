@@ -2,9 +2,16 @@ import { useMemo } from 'react'
 import { useSuperAdminData } from '../../hooks/useSuperAdminData.js'
 import { Link } from 'react-router-dom'
 import { apiJson } from '../../utils/api.js'
+import { useAuth } from '../../contexts/AuthContext.jsx'
+
 
 export default function SuperAdminDashboard() {
-  const { stats, monthlyUsage, pendingRequests, formatDateTime } = useSuperAdminData()
+  // Prevent API calls when user is not hydrated / not super admin
+  const { user, isHydrated } = useAuth()
+  const { stats, monthlyUsage, pendingRequests, formatDateTime } = useSuperAdminData({
+    enabled: isHydrated && user?.role === 'super_admin',
+  })
+
 
   const handleQuickApprove = async (id) => {
     if (!confirm('Setujui pengajuan ini?')) return
